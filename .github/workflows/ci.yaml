@@ -1,0 +1,24 @@
+jobs:
+  test:
+    name: Erlang/OTP ${{ matrix.otp-version }} / Elixir ${{ matrix.elixir-version }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ matrix.elixir-version }}
+          otp-version: ${{ matrix.otp-version }}
+      - uses: actions/checkout@v7
+      - run: elixirc masonree.ex
+      - run: elixir masonree_test.exs
+    strategy:
+      matrix:
+        elixir-version: [1.20.3]
+        os: [ubuntu-24.04]
+        otp-version: [29.0.5]
+
+name: CI
+
+on:
+  push:
+    tags:
+      - v[0-9]+
