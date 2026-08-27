@@ -29,7 +29,7 @@ defmodule Masonree.MixProject do
       app: :masonree,
       elixir: "~> 1.20",
       start_permanent: Mix.env() == :prod,
-      version: "0.0.0"
+      version: "0.1.0"
     ]
   end
 end
