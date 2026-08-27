@@ -1,5 +1,7 @@
 jobs:
   test:
+    env:
+      MIX_ENV: test
     name: Erlang/OTP ${{ matrix.otp-version }} / Elixir ${{ matrix.elixir-version }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -8,8 +10,17 @@ jobs:
           elixir-version: ${{ matrix.elixir-version }}
           otp-version: ${{ matrix.otp-version }}
       - uses: actions/checkout@v7
-      - run: elixirc masonree.ex
-      - run: elixir masonree_test.exs
+      - env:
+          cache-name: mix compile
+        name: Run actions/cache@v6 [${{ env.cache-name }}]
+        uses: actions/cache@v6
+        with:
+          key: "${{ matrix.os }}:${{ env.cache-name }}:${{ hashFiles('mix.exs') }}"
+          path: _build
+          restore-keys: "${{ matrix.os }}:${{ env.cache-name }}:"
+      - run: mix compile
+      - run: mix format --check-formatted
+      - run: mix test
     strategy:
       matrix:
         elixir-version: [1.20.3]
