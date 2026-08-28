@@ -36,7 +36,10 @@ defmodule Masonree.MixProject do
       app: :masonree,
       boundary: [default: [type: :strict]],
       compilers: [:boundary | Mix.compilers()],
-      deps: [{:boundary, "~> 0.10", runtime: false}],
+      deps: [
+        {:boundary, "~> 0.10", runtime: false},
+        {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      ],
       deps_path: "dep",
       elixir: "~> 1.20",
       elixirc_options: [warnings_as_errors: true],
