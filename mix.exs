@@ -53,7 +53,7 @@ defmodule Masonree.MixProject do
       elixirc_options: [warnings_as_errors: true],
       name: "Masonree",
       start_permanent: env == :prod,
-      version: "0.1.0"
+      version: "0.2.0"
     ]
   end
 
