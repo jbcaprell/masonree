@@ -27,7 +27,7 @@ defmodule Masonree.MixProject do
   def project() do
     [
       app: :masonree,
-      deps: [],
+      deps: [{:boundary, "~> 0.10", runtime: false}],
       deps_path: "dep",
       elixir: "~> 1.20",
       elixirc_options: [warnings_as_errors: true],
