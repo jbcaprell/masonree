@@ -8,11 +8,10 @@ defmodule MasonreeTest do
 
   doctest Masonree, import: true
 
-  describe "greet/0" do
-    import Masonree, only: [greet: 0]
-
-    test "returns the greeting" do
-      assert greet() == "Hello, world!"
+  describe "Masonree" do
+    test "the boundary defines no functions or macros" do
+      assert Masonree.__info__(:functions) == []
+      assert Masonree.__info__(:macros) == []
     end
   end
 end
