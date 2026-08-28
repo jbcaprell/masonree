@@ -43,6 +43,7 @@ defmodule Masonree.MixProject do
         {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
       ],
       deps_path: "dep",
+      dialyzer: [ignore_warnings: ".dialyzer.exs"],
       elixir: "~> 1.20",
       elixirc_options: [warnings_as_errors: true],
       start_permanent: Mix.env() == :prod,
