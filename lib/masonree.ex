@@ -2,6 +2,8 @@ defmodule Masonree do
   @moduledoc "Defines the library’s namespace."
   @moduledoc since: "0.1.0"
 
+  use Boundary
+
   @typedoc "Represents the greeting."
   @typedoc since: "0.1.0"
   @type greeting() :: String.t()

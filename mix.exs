@@ -26,7 +26,16 @@ defmodule Masonree.MixProject do
   @spec project() :: project()
   def project() do
     [
+      aliases: [
+        "boundary.ex_doc_groups": [
+          "boundary.ex_doc_groups",
+          &write_moduledoc_group/1,
+          "format .boundary.exs"
+        ]
+      ],
       app: :masonree,
+      boundary: [default: [type: :strict]],
+      compilers: [:boundary | Mix.compilers()],
       deps: [{:boundary, "~> 0.10", runtime: false}],
       deps_path: "dep",
       elixir: "~> 1.20",
@@ -34,5 +43,17 @@ defmodule Masonree.MixProject do
       start_permanent: Mix.env() == :prod,
       version: "0.1.0"
     ]
+  end
+
+  @spec write_moduledoc_group(OptionParser.argv()) :: :ok
+  defp write_moduledoc_group(_argv) do
+    "boundary.exs"
+    |> Code.eval_file()
+    |> elem(0)
+    |> Macro.escape()
+    |> Macro.to_string()
+    |> then(&File.write!(".boundary.exs", &1))
+
+    File.rm!("boundary.exs")
   end
 end
