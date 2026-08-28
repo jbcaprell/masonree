@@ -25,6 +25,8 @@ defmodule Masonree.MixProject do
   @doc since: "0.1.0"
   @spec project() :: project()
   def project() do
+    env = Mix.env()
+
     [
       aliases: [
         "boundary.ex_doc_groups": [
@@ -32,7 +34,8 @@ defmodule Masonree.MixProject do
           &write_moduledoc_group/1,
           "format .boundary.exs"
         ],
-        credo: "credo --config-name default"
+        credo: "credo --config-name default",
+        docs: ["boundary.ex_doc_groups", "docs"]
       ],
       app: :masonree,
       boundary: [default: [type: :strict]],
@@ -45,12 +48,23 @@ defmodule Masonree.MixProject do
       ],
       deps_path: "dep",
       dialyzer: [ignore_warnings: ".dialyzer.exs"],
+      docs: [groups_for_modules: load_moduledoc_group(env)],
       elixir: "~> 1.20",
       elixirc_options: [warnings_as_errors: true],
-      start_permanent: Mix.env() == :prod,
+      name: "Masonree",
+      start_permanent: env == :prod,
       version: "0.1.0"
     ]
   end
+
+  @spec load_moduledoc_group(atom()) :: nil | Keyword.t([module()])
+  defp load_moduledoc_group(:dev) do
+    ".boundary.exs"
+    |> Code.eval_file()
+    |> elem(0)
+  end
+
+  defp load_moduledoc_group(env) when is_atom(env), do: nil
 
   @spec write_moduledoc_group(OptionParser.argv()) :: :ok
   defp write_moduledoc_group(_argv) do
