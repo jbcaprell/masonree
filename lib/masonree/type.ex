@@ -25,9 +25,9 @@ defmodule Masonree.Type do
   @typedoc since: "0.3.0"
   @type payload() :: term()
 
-  @typedoc "Represents a type."
+  @typedoc "Represents a type, with the payload where its member takes one."
   @typedoc since: "0.3.0"
-  @type t() :: :boolean
+  @type t() :: :boolean | {:enum, [value()]}
 
   @typedoc "Represents the value a member is asked about."
   @typedoc since: "0.3.0"
@@ -37,7 +37,7 @@ defmodule Masonree.Type do
   @doc since: "0.3.0"
   @callback admits?(payload :: payload(), value :: value()) :: boolean()
 
-  @modules %{boolean: Type.Boolean}
+  @modules %{boolean: Type.Boolean, enum: Type.Enum}
 
   @doc """
   Returns whether `type` may hold `value`.
@@ -52,6 +52,9 @@ defmodule Masonree.Type do
 
       iex> admits?(:boolean, "true")
       false
+
+      iex> admits?({:enum, ["dark", "light"]}, "dark")
+      true
 
       iex> admits?(:boolean, nil)
       true
@@ -69,6 +72,13 @@ defmodule Masonree.Type do
   end
 
   @spec resolve(t()) :: :error | {module(), payload()}
+  defp resolve({tag, payload}) when is_atom(tag) do
+    case Map.fetch(@modules, tag) do
+      {:ok, module} -> {module, payload}
+      :error -> :error
+    end
+  end
+
   defp resolve(type) when is_atom(type) do
     case Map.fetch(@modules, type) do
       {:ok, module} -> {module, nil}

@@ -1,1 +1,1 @@
-[Masonree: [Masonree, Masonree.Type, Masonree.Type.Boolean]]
+[Masonree: [Masonree, Masonree.Type, Masonree.Type.Boolean, Masonree.Type.Enum]]
