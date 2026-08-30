@@ -47,6 +47,10 @@ defmodule Masonree.Document do
 
   defstruct root: []
 
+  @typedoc "Represents the nodes a document holds, in document order."
+  @typedoc since: "0.3.0"
+  @type nodes() :: [Node.t()]
+
   @typedoc "Represents a document read, or a shape that is not one."
   @typedoc since: "0.3.0"
   @type reading() :: {:ok, t()} | :error
@@ -57,7 +61,7 @@ defmodule Masonree.Document do
 
   @typedoc "Represents the document."
   @typedoc since: "0.3.0"
-  @type t() :: %__MODULE__{root: [Node.t()]}
+  @type t() :: %__MODULE__{root: nodes()}
 
   @doc """
   Returns `{:ok, document}` where `serialized` is a document, or `:error`.
@@ -208,7 +212,64 @@ defmodule Masonree.Document do
     %{"root" => Enum.map(document.root, &Node.to_map/1)}
   end
 
-  @spec get_root(serialized()) :: [Node.t()]
+  @doc """
+  Returns every node `document` holds, in document order.
+
+  Document order is depth-first and pre-order: a node precedes its own
+  descendants, and siblings keep the order they are stored in. That is the order
+  the page reads in and the order a renderer emits, so any other order would be
+  a second ordering the rest of the system had to reason about.
+
+  It returns nodes, not positions. The callers that want a position do not
+  consume a flat walk at all — an operation that inserts or moves has to rebuild
+  the tree, and a renderer nests each child inside its parent’s markup; both
+  recurse, and neither can use a list. What consumes a flat walk is a lookup and
+  a per-node report, and both want the node. Handing back `{node, path}` pairs
+  would cost every walk a path per node to serve callers that build their own,
+  and it could never be taken back: a positional sibling can be added the day
+  something needs one, but a tuple cannot be unwrapped without breaking every
+  call site that only wanted the node.
+
+  An empty document walks to nothing rather than raising, which is the same
+  ruling `from_map!/1` makes about an absent root.
+
+  ## Examples
+
+      iex> document = %Document{
+      ...>   root: [
+      ...>     %Node{
+      ...>       children: [
+      ...>         %Node{id: "n_lnO2tbzgrQ7d", type: "test/example", version: 1}
+      ...>       ],
+      ...>       id: "n_3NtOV1kcprXo",
+      ...>       type: "test/example",
+      ...>       version: 1
+      ...>     }
+      ...>   ]
+      ...> }
+      iex>
+      iex> nodes = walk(document)
+      iex> Enum.map(nodes, & &1.id)
+      ["n_3NtOV1kcprXo", "n_lnO2tbzgrQ7d"]
+
+      iex> walk(%Document{})
+      []
+
+  """
+  @doc since: "0.3.0"
+  @spec walk(t()) :: nodes()
+  def walk(document) when is_struct(document, __MODULE__) do
+    Enum.flat_map(document.root, &descend/1)
+  end
+
+  @spec descend(Node.t()) :: nodes()
+  defp descend(node) do
+    descendants = Enum.flat_map(node.children, &descend/1)
+
+    [node | descendants]
+  end
+
+  @spec get_root(serialized()) :: nodes()
   defp get_root(serialized) do
     serialized
     |> take_root()

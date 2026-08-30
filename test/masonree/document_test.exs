@@ -197,4 +197,43 @@ defmodule Masonree.DocumentTest do
                ~W[n_51LPnq3SM3uh n_qP7DjHPA5X2J]
     end
   end
+
+  describe "walk/1" do
+    import Document, only: [walk: 1]
+
+    test "raises on anything that is not a document" do
+      serialized = JSON.decode!("{}")
+
+      assert_raise FunctionClauseError, fn -> walk(serialized) end
+    end
+
+    test "visits a node before its descendants, siblings in order" do
+      ids =
+        @document
+        |> walk()
+        |> Enum.map(& &1.id)
+
+      assert ids == [
+               "n_51LPnq3SM3uh",
+               "n_0LofVPj0Ujl0",
+               "n_1ARgI7WIP_25",
+               "n_OcoZyidcF1tM",
+               "n_THJxr_DEBbEe",
+               "n_qP7DjHPA5X2J"
+             ]
+    end
+
+    test "visits a page-sized document once per node" do
+      root = for _root <- 1..3, do: build_bare(5)
+      document = Document.from_map!(%{"root" => root})
+      nodes = walk(document)
+
+      assert nodes == flatten(document)
+      assert length(nodes) == 363
+    end
+
+    test "walks an empty document to nothing" do
+      assert walk(%Document{}) == []
+    end
+  end
 end
