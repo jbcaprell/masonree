@@ -1,6 +1,7 @@
 [
   Masonree: [
     Masonree,
+    Masonree.Document,
     Masonree.Manifest,
     Masonree.Manifest.Attribute,
     Masonree.Node,
