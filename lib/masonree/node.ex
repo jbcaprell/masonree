@@ -69,6 +69,65 @@ defmodule Masonree.Node do
         }
 
   @doc """
+  Returns the node `serialized` describes, tolerantly.
+
+  This is the path out of the database, and the only input the library reads
+  that never passed through its own validation — a document is written by an
+  editor and read back by whatever the row holds. So absence is filled rather
+  than refused: a missing id is minted, a missing version assumes 1, missing
+  attributes and children are empty, and a missing preset is `nil`. A malformed
+  field value is treated exactly as absence — an `"attributes"` that is not a
+  map, a `"children"` that is not a list, an `"id"` that is not a binary, a
+  `"preset"` that is not a binary, a `"version"` that is not a positive integer
+  — because a value this cannot use is one it can default, and the node is not
+  the worse for it.
+
+  Every field this reads is guarded, and the guards are the typespec written
+  twice. A `jsonb` object can hold a map where a version belongs and a list
+  where a preset belongs, and a field read without a guard puts that value
+  straight into a struct whose `t()` says it cannot be there — which is a lie
+  the compiler cannot catch and the next reader inherits. A version is counted
+  with rather than merely stored, and a preset reaches the markup, where a map
+  is not something that can be rendered. Neither is a shape a caller passes by
+  mistake; both are shapes a database hands back.
+
+  A field with an honest default is filled; a field without one is required.
+  `type` has none — a node that does not name its block is not a node with a
+  field missing — so a map without a string `"type"` raises
+  `FunctionClauseError`. The `!` is that promise, and it reserves the bare name
+  for an answering sibling, for the caller that cannot afford a raise.
+
+  Tolerance also stops at the shape of what it is handed. A `"children"` list
+  holding anything that is not itself a serialized node raises from inside the
+  recursion, at the depth where it sits.
+
+  ## Example
+
+      iex> from_map!(%{"id" => "n_2Vwyyc_LKB7C", "type" => "test/example"})
+      %Node{
+        attributes: %{},
+        children: [],
+        id: "n_2Vwyyc_LKB7C",
+        preset: nil,
+        type: "test/example",
+        version: 1
+      }
+
+  """
+  @doc since: "0.3.0"
+  @spec from_map!(serialized()) :: t()
+  def from_map!(%{"type" => type} = serialized) when is_binary(type) do
+    %__MODULE__{
+      attributes: get_attributes(serialized),
+      children: get_children(serialized),
+      id: get_id(serialized),
+      preset: get_preset(serialized),
+      type: type,
+      version: get_version(serialized)
+    }
+  end
+
+  @doc """
   Returns a freshly minted node id.
 
   Nine bytes of entropy, url-safe and unpadded, behind an `n_` prefix. Nine
@@ -132,4 +191,41 @@ defmodule Masonree.Node do
       "version" => node.version
     }
   end
+
+  @spec get_attributes(serialized()) :: %{Manifest.key() => Attribute.value()}
+  defp get_attributes(%{"attributes" => attributes}) when is_map(attributes) do
+    attributes
+  end
+
+  defp get_attributes(_serialized), do: %{}
+
+  @spec get_children(serialized()) :: [t()]
+  defp get_children(serialized) do
+    serialized
+    |> take_children()
+    |> Enum.map(&from_map!/1)
+  end
+
+  @spec get_id(serialized()) :: id()
+  defp get_id(%{"id" => id}) when is_binary(id), do: id
+  defp get_id(_serialized), do: generate_id()
+
+  @spec get_preset(serialized()) :: nil | String.t()
+  defp get_preset(%{"preset" => preset}) when is_binary(preset), do: preset
+  defp get_preset(_serialized), do: nil
+
+  @spec get_version(serialized()) :: Manifest.version()
+  defp get_version(%{"version" => version})
+       when is_integer(version) and version > 0 do
+    version
+  end
+
+  defp get_version(_serialized), do: 1
+
+  @spec take_children(serialized()) :: [term()]
+  defp take_children(%{"children" => children}) when is_list(children) do
+    children
+  end
+
+  defp take_children(_serialized), do: []
 end
