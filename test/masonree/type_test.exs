@@ -24,6 +24,9 @@ defmodule Masonree.TypeTest do
       assert admits?(:boolean, true)
       refute admits?(:boolean, "true")
 
+      assert admits?(:number, 3)
+      refute admits?(:number, "3")
+
       assert admits?({:enum, ["dark", "light"]}, "dark")
       refute admits?({:enum, ["dark", "light"]}, "vermilion")
     end
