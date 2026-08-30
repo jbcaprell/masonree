@@ -53,6 +53,10 @@ defmodule Masonree.Node do
   @typedoc since: "0.3.0"
   @type id() :: String.t()
 
+  @typedoc "Represents a node read, or an envelope that is not one."
+  @typedoc since: "0.3.0"
+  @type reading() :: {:ok, t()} | :error
+
   @typedoc "Represents the node as a plain map, the shape that persists."
   @typedoc since: "0.3.0"
   @type serialized() :: %{String.t() => term()}
@@ -67,6 +71,43 @@ defmodule Masonree.Node do
           type: Manifest.name(),
           version: Manifest.version()
         }
+
+  @doc """
+  Returns `{:ok, node}` where `serialized` is a node envelope, or `:error`.
+
+  The answering sibling of `from_map!/1`, for a caller that has to account for a
+  malformed row rather than let it through. Everything `from_map!/1` fills, this
+  fills; the one envelope it refuses, this reports.
+
+  The refusal is checked and never rescued, and it reaches all the way down: a
+  child at any depth that is not an envelope makes the whole read `:error`. Half
+  a tree is not a tolerant answer, it is a lost one, and a caller handed one has
+  no way to know what is missing.
+
+  ## Examples
+
+      iex> from_map(%{"id" => "n_4I7rZibT37_k", "type" => "test/example"})
+      {
+        :ok,
+        %Node{
+          attributes: %{},
+          children: [],
+          id: "n_4I7rZibT37_k",
+          preset: nil,
+          type: "test/example",
+          version: 1
+        }
+      }
+
+      iex> from_map(%{"children" => [%{}], "type" => "test/example"})
+      :error
+
+  """
+  @doc since: "0.3.0"
+  @spec from_map(serialized()) :: reading()
+  def from_map(serialized) do
+    if readable?(serialized), do: {:ok, from_map!(serialized)}, else: :error
+  end
 
   @doc """
   Returns the node `serialized` describes, tolerantly.
@@ -221,6 +262,15 @@ defmodule Masonree.Node do
   end
 
   defp get_version(_serialized), do: 1
+
+  @spec readable?(term()) :: boolean()
+  defp readable?(%{"type" => type} = serialized) when is_binary(type) do
+    serialized
+    |> take_children()
+    |> Enum.all?(&readable?/1)
+  end
+
+  defp readable?(_serialized), do: false
 
   @spec take_children(serialized()) :: [term()]
   defp take_children(%{"children" => children}) when is_list(children) do

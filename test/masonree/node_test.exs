@@ -152,7 +152,12 @@ defmodule Masonree.NodeTest do
     end
 
     test "treats a malformed children value as absent" do
-      node = from_map!(%{"children" => "none", "type" => "test/example"})
+      serialized = %{
+        "children" => %{"id" => "n_3LiBstWPCLMC", "type" => "test/child"},
+        "type" => "test/example"
+      }
+
+      node = from_map!(serialized)
 
       assert node.children == []
     end
@@ -171,6 +176,52 @@ defmodule Masonree.NodeTest do
 
     test "treats a version below 1 as absent" do
       assert from_map!(%{"type" => "test/example", "version" => 0}).version == 1
+    end
+  end
+
+  describe "from_map/1" do
+    import Node, only: [from_map: 1]
+
+    test "reads a well-formed envelope" do
+      serialized = %{
+        "attributes" => %{"level" => 3},
+        "children" => [%{"id" => "n_3LiBstWPCLMC", "type" => "test/child"}],
+        "id" => "n_Fr5MmRIUVz2F",
+        "preset" => "wide",
+        "type" => "test/example",
+        "version" => 2
+      }
+
+      assert from_map(serialized) == {:ok, Node.from_map!(serialized)}
+    end
+
+    test "refuses a child at depth that is not an envelope" do
+      grandchild = %{"id" => "n_3LiBstWPCLMC"}
+      child = %{"children" => [grandchild], "type" => "test/example"}
+      serialized = %{"children" => [child], "type" => "test/example"}
+
+      assert from_map(serialized) == :error
+    end
+
+    test "refuses a map with no type" do
+      assert from_map(%{"id" => "n_wJEY6cpelYvh"}) == :error
+    end
+
+    test "refuses a type that is not a string" do
+      assert from_map(%{"type" => 42}) == :error
+    end
+
+    test "tolerates a malformed field, as the raising reader does" do
+      serialized = %{
+        "children" => "none",
+        "id" => 123,
+        "type" => "test/example"
+      }
+
+      {:ok, node} = from_map(serialized)
+
+      assert node.children == []
+      assert node.id != 123
     end
   end
 
