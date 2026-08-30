@@ -4,6 +4,10 @@ defmodule Masonree.MixProject do
 
   use Mix.Project
 
+  @typedoc "Represents the application configuration."
+  @typedoc since: "0.3.0"
+  @type application() :: [{Keyword.key(), Keyword.value()}]
+
   @typedoc "Represents the project configuration."
   @typedoc since: "0.1.0"
   @type project() :: [project_keyword()]
@@ -12,6 +16,19 @@ defmodule Masonree.MixProject do
            {:app, Application.app()}
            | {:version, String.t()}
            | {Keyword.key(), Keyword.value()}
+
+  @doc """
+  Returns the application configuration.
+
+  ## Example
+
+      iex> application()[:extra_applications]
+      [:crypto, :logger]
+
+  """
+  @doc since: "0.3.0"
+  @spec application() :: application()
+  def application(), do: [extra_applications: ~W[crypto logger]a]
 
   @doc """
   Returns the project configuration.

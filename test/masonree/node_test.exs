@@ -30,4 +30,27 @@ defmodule Masonree.NodeTest do
       assert_raise ArgumentError, message, fn -> struct!(Node, []) end
     end
   end
+
+  describe "generate_id/0" do
+    import Node, only: [generate_id: 0]
+
+    test "mints a different id every time" do
+      ids = for _sample <- 1..100, do: generate_id()
+
+      assert Enum.uniq(ids) == ids
+    end
+
+    test "mints an id that decodes to nine bytes" do
+      "n_" <> encoded = generate_id()
+      entropy = Base.url_decode64!(encoded, padding: false)
+
+      assert byte_size(entropy) == 9
+    end
+
+    test "mints an id that is url-safe" do
+      ids = for _sample <- 1..100, do: generate_id()
+
+      assert Enum.all?(ids, &(&1 =~ ~r"^n_[A-Za-z0-9_-]{12}$"))
+    end
+  end
 end
