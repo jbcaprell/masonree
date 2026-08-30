@@ -21,4 +21,16 @@ defmodule Masonree.Block.Paragraph do
     name: "core/paragraph",
     version: 1
   }
+
+  @impl Masonree.Block
+  def render(assigns) do
+    assigns = assign(assigns, :content, assigns.node.attributes["content"])
+
+    rendered =
+      ~H"""
+      <p {@html_attributes}>{@content}</p>
+      """
+
+    {rendered, []}
+  end
 end
