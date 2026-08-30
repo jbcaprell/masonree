@@ -20,9 +20,28 @@ defmodule Masonree.BlockTest do
     end
   end
 
+  describe "__before_compile__/1" do
+    defmodule Registering do
+      use Masonree.Block
+
+      @manifest %Manifest{name: "test/registering", version: 1}
+    end
+
+    test "defines manifest/0 from the manifest the block registered" do
+      assert Registering.manifest() ==
+               %Masonree.Manifest{name: "test/registering", version: 1}
+    end
+
+    test "returns the same term on every call" do
+      assert :erts_debug.same(Registering.manifest(), Registering.manifest())
+    end
+  end
+
   describe "__using__/1" do
     defmodule Declaring do
       use Masonree.Block
+
+      @manifest %Manifest{name: "test/declaring", version: 1}
 
       attr :rest, :global
       slot :inner_block, required: true
@@ -33,23 +52,18 @@ defmodule Masonree.BlockTest do
         <div {@rest}>{render_slot(@inner_block)}</div>
         """
       end
-
-      @impl Block
-      def manifest(), do: %Manifest{name: "test/declaring", version: 1}
     end
 
     defmodule Minimal do
       use Masonree.Block
 
-      @impl Block
-      def manifest(), do: %Manifest{name: "test/minimal", version: 1}
+      @manifest %Manifest{name: "test/minimal", version: 1}
     end
 
     defmodule Projecting do
       use Masonree.Block
 
-      @impl Block
-      def manifest(), do: %Manifest{name: "test/projecting", version: 1}
+      @manifest %Manifest{name: "test/projecting", version: 1}
 
       @impl Block
       def render(assigns) do

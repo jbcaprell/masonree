@@ -36,6 +36,10 @@ defmodule Masonree.Block do
   @typedoc since: "0.3.0"
   @type assigns() :: map()
 
+  @typedoc "Represents the environment of the module being compiled."
+  @typedoc since: "0.3.0"
+  @type env() :: Macro.Env.t()
+
   @typedoc "Represents the code `use` injects."
   @typedoc since: "0.3.0"
   @type injection() :: Macro.t()
@@ -63,6 +67,24 @@ defmodule Masonree.Block do
   @optional_callbacks render: 1
 
   @doc """
+  Defines `c:manifest/0` from the `@manifest` the block registered.
+
+  The struct is built inside a module attribute, so it lives in the module’s
+  literal pool and `c:manifest/0` returns a shared term rather than
+  reconstructing one per call. Nothing here judges the manifest yet: validation
+  joins this hook when there is a validator to run, and until then a block’s
+  manifest is admitted as declared.
+  """
+  @doc since: "0.3.0"
+  @spec __before_compile__(env()) :: injection()
+  defmacro __before_compile__(_env) do
+    quote do
+      @impl Masonree.Block
+      def manifest(), do: @manifest
+    end
+  end
+
+  @doc """
   Registers the behaviour and injects `Phoenix.Component`, ignoring `options`.
 
   ## Example
@@ -70,8 +92,7 @@ defmodule Masonree.Block do
       iex> defmodule Example do
       ...>   use Masonree.Block
       ...>
-      ...>   @impl Block
-      ...>   def manifest(), do: %Manifest{name: "test/example", version: 1}
+      ...>   @manifest %Manifest{name: "test/example", version: 1}
       ...> end
       iex>
       iex> Example.manifest()
@@ -90,6 +111,7 @@ defmodule Masonree.Block do
     quote do
       use Phoenix.Component
 
+      @before_compile unquote(__MODULE__)
       @behaviour unquote(__MODULE__)
 
       alias Masonree
