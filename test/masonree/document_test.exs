@@ -113,6 +113,53 @@ defmodule Masonree.DocumentTest do
     end
   end
 
+  describe "from_map/1" do
+    import Document, only: [from_map: 1]
+
+    test "reads a well-formed document, root in written order" do
+      serialized = %{
+        "root" => [
+          %{"id" => "n_tjt_RqeMme7S", "type" => "test/example"},
+          %{"id" => "n_CFPw-OJU3X68", "type" => "test/example"}
+        ]
+      }
+
+      {:ok, document} = from_map(serialized)
+
+      assert document == Document.from_map!(serialized)
+
+      assert Enum.map(document.root, & &1.id) ==
+               ~W[n_tjt_RqeMme7S n_CFPw-OJU3X68]
+    end
+
+    test "refuses a root entry at depth that is not an envelope" do
+      serialized = %{
+        "root" => [%{"children" => [%{}], "type" => "test/example"}]
+      }
+
+      assert from_map(serialized) == :error
+    end
+
+    test "refuses a root entry that is not a node" do
+      assert from_map(%{"root" => [%{}]}) == :error
+    end
+
+    test "refuses a shape that is not a map" do
+      assert from_map([]) == :error
+    end
+
+    test "refuses a struct, which is a map and not an envelope" do
+      node = %Node{id: "n_62310XrXypQB", type: "test/example", version: 1}
+
+      assert from_map(%Document{root: [node]}) == :error
+      assert from_map(node) == :error
+    end
+
+    test "tolerates a malformed root, as the raising reader does" do
+      assert from_map(%{"root" => "none"}) == {:ok, %Document{root: []}}
+    end
+  end
+
   describe "to_map/1" do
     import Document, only: [to_map: 1]
 

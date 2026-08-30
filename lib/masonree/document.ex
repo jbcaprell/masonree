@@ -47,6 +47,10 @@ defmodule Masonree.Document do
 
   defstruct root: []
 
+  @typedoc "Represents a document read, or a shape that is not one."
+  @typedoc since: "0.3.0"
+  @type reading() :: {:ok, t()} | :error
+
   @typedoc "Represents the document as a plain map, the shape that persists."
   @typedoc since: "0.3.0"
   @type serialized() :: %{String.t() => term()}
@@ -54,6 +58,57 @@ defmodule Masonree.Document do
   @typedoc "Represents the document."
   @typedoc since: "0.3.0"
   @type t() :: %__MODULE__{root: [Node.t()]}
+
+  @doc """
+  Returns `{:ok, document}` where `serialized` is a document, or `:error`.
+
+  The answering sibling of `from_map!/1`. Everything `from_map!/1` tolerates,
+  this tolerates — a missing root, a root that is not a list, a node field of
+  the wrong shape — because tolerance is about absence and this pair is
+  about envelopes.
+
+  What it refuses is a root entry that is not a node, at any depth, and it
+  refuses the whole document rather than the entry. A page returned with one
+  subtree missing is worse than one not returned at all: the caller has no way
+  to know, and writing it back makes the loss permanent.
+
+  A struct is refused too, before the read rather than by failing it, for the
+  reason `from_map!/1` states.
+
+  ## Examples
+
+      iex> document = %{
+      ...>   "root" => [%{"id" => "n_89lrPp3tUZn5", "type" => "test/example"}]
+      ...> }
+      iex> from_map(document)
+      {
+        :ok,
+        %Document{
+          root: [
+            %Node{
+              attributes: %{},
+              children: [],
+              id: "n_89lrPp3tUZn5",
+              preset: nil,
+              type: "test/example",
+              version: 1
+            }
+          ]
+        }
+      }
+
+      iex> from_map(%{"root" => [%{}]})
+      :error
+
+  """
+  @doc since: "0.3.0"
+  @spec from_map(serialized()) :: reading()
+  def from_map(serialized)
+      when is_map(serialized) and not is_struct(serialized) do
+    if readable?(serialized), do: {:ok, from_map!(serialized)}, else: :error
+  end
+
+  def from_map(_serialized), do: :error
 
   @doc """
   Reads a document from `serialized`, tolerating every absence with a default.
@@ -158,6 +213,13 @@ defmodule Masonree.Document do
     serialized
     |> take_root()
     |> Enum.map(&Node.from_map!/1)
+  end
+
+  @spec readable?(serialized()) :: boolean()
+  defp readable?(serialized) do
+    serialized
+    |> take_root()
+    |> Enum.all?(&match?({:ok, _node}, Node.from_map(&1)))
   end
 
   @spec take_root(serialized()) :: [term()]
