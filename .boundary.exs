@@ -3,6 +3,7 @@
     Masonree,
     Masonree.Manifest,
     Masonree.Manifest.Attribute,
+    Masonree.Node,
     Masonree.Type,
     Masonree.Type.Boolean,
     Masonree.Type.Enum,

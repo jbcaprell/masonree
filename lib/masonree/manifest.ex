@@ -40,13 +40,25 @@ defmodule Masonree.Manifest do
   @enforce_keys [:name, :version]
   defstruct attributes: %{}, category: nil, label: nil, name: nil, version: nil
 
+  @typedoc "Represents an attribute’s key in the manifest."
+  @typedoc since: "0.3.0"
+  @type key() :: String.t()
+
+  @typedoc "Represents the block’s name."
+  @typedoc since: "0.3.0"
+  @type name() :: String.t()
+
   @typedoc "Represents the manifest."
   @typedoc since: "0.3.0"
   @type t() :: %__MODULE__{
-          attributes: %{String.t() => Attribute.t()},
+          attributes: %{key() => Attribute.t()},
           category: nil | String.t(),
           label: nil | String.t(),
-          name: String.t(),
-          version: pos_integer()
+          name: name(),
+          version: version()
         }
+
+  @typedoc "Represents the block’s version, a count of its migrations."
+  @typedoc since: "0.3.0"
+  @type version() :: pos_integer()
 end

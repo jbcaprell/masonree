@@ -46,8 +46,12 @@ defmodule Masonree.Manifest.Attribute do
   @typedoc "Represents the attribute declaration."
   @typedoc since: "0.3.0"
   @type t() :: %__MODULE__{
-          default: nil | boolean() | number() | String.t(),
+          default: nil | value(),
           required: boolean(),
           type: Type.t()
         }
+
+  @typedoc "Represents a value an attribute can hold."
+  @typedoc since: "0.3.0"
+  @type value() :: boolean() | number() | String.t()
 end
