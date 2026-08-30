@@ -2,6 +2,7 @@
   Masonree: [
     Masonree,
     Masonree.Manifest,
+    Masonree.Manifest.Attribute,
     Masonree.Type,
     Masonree.Type.Boolean,
     Masonree.Type.Enum,

@@ -8,9 +8,23 @@ defmodule Masonree.ManifestTest do
 
   alias Masonree.Manifest
 
+  alias Manifest.Attribute
+
   doctest Manifest, import: true
 
   describe "%Manifest{}" do
+    test "carries a declared attribute" do
+      attribute = %Attribute{default: "", type: :string}
+
+      manifest = %Manifest{
+        attributes: %{"content" => attribute},
+        name: "test/example",
+        version: 1
+      }
+
+      assert manifest.attributes["content"] == attribute
+    end
+
     test "defaults to no attributes, category or label" do
       assert Map.from_struct(%Manifest{name: "test/example", version: 1}) == %{
                attributes: %{},

@@ -31,13 +31,19 @@ defmodule Masonree.Manifest do
   """
   @moduledoc since: "0.3.0"
 
+  alias Masonree
+
+  alias Masonree.Manifest
+
+  alias Manifest.Attribute
+
   @enforce_keys [:name, :version]
   defstruct attributes: %{}, category: nil, label: nil, name: nil, version: nil
 
   @typedoc "Represents the manifest."
   @typedoc since: "0.3.0"
   @type t() :: %__MODULE__{
-          attributes: %{String.t() => map()},
+          attributes: %{String.t() => Attribute.t()},
           category: nil | String.t(),
           label: nil | String.t(),
           name: String.t(),
