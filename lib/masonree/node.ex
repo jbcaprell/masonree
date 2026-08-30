@@ -53,6 +53,10 @@ defmodule Masonree.Node do
   @typedoc since: "0.3.0"
   @type id() :: String.t()
 
+  @typedoc "Represents the node as a plain map, the shape that persists."
+  @typedoc since: "0.3.0"
+  @type serialized() :: %{String.t() => term()}
+
   @typedoc "Represents the node."
   @typedoc since: "0.3.0"
   @type t() :: %__MODULE__{
@@ -85,5 +89,47 @@ defmodule Masonree.Node do
     |> :crypto.strong_rand_bytes()
     |> Base.url_encode64(padding: false)
     |> then(&("n_" <> &1))
+  end
+
+  @doc """
+  Returns `node` as a plain map, with string keys, recursively.
+
+  This is the shape that persists. Keys are strings rather than atoms because
+  the destination is `jsonb` and the return trip must not mint an atom from
+  stored content — a document is written by an editor and read back by the same
+  code, but the atom table is a global the content should not be able to grow.
+
+  Every field is written, including a `nil` preset. A tolerant reader could
+  absorb that key’s absence, so the pair could be asymmetric and the writer
+  could omit it. It is written anyway: the stored shape is then one shape for
+  every node, which is what lets a `jsonb` key set be relied on and a revision
+  diff be read. Tolerance is the reader’s business; the writer states the
+  whole node.
+
+  ## Example
+
+      iex> node = %Node{id: "n_CBNZeYIeMPAY", type: "test/example", version: 1}
+      iex> to_map(node)
+      %{
+        "attributes" => %{},
+        "children" => [],
+        "id" => "n_CBNZeYIeMPAY",
+        "preset" => nil,
+        "type" => "test/example",
+        "version" => 1
+      }
+
+  """
+  @doc since: "0.3.0"
+  @spec to_map(t()) :: serialized()
+  def to_map(node) when is_struct(node, __MODULE__) do
+    %{
+      "attributes" => node.attributes,
+      "children" => Enum.map(node.children, &to_map/1),
+      "id" => node.id,
+      "preset" => node.preset,
+      "type" => node.type,
+      "version" => node.version
+    }
   end
 end
