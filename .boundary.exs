@@ -7,6 +7,7 @@
     Masonree.Manifest,
     Masonree.Manifest.Attribute,
     Masonree.Node,
+    Masonree.Projection,
     Masonree.Type,
     Masonree.Type.Boolean,
     Masonree.Type.Enum,
