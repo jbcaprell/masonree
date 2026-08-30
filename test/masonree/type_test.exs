@@ -16,4 +16,25 @@ defmodule Masonree.TypeTest do
       assert Type.behaviour_info(:optional_callbacks) == []
     end
   end
+
+  describe "admits?/2" do
+    import Type, only: [admits?: 2]
+
+    test "puts the question to the member" do
+      assert admits?(:boolean, true)
+      refute admits?(:boolean, "true")
+    end
+
+    test "refuses a type the lattice does not hold" do
+      refute admits?(:bool, true)
+      refute admits?({:bool, true}, true)
+      refute admits?("boolean", true)
+      refute admits?("boolean", "true")
+    end
+
+    test "returns true for a nil, whatever the type" do
+      assert admits?(:boolean, nil)
+      assert admits?(:bool, nil)
+    end
+  end
 end
