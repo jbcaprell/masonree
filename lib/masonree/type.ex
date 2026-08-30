@@ -29,6 +29,14 @@ defmodule Masonree.Type do
   @typedoc since: "0.3.0"
   @type t() :: :boolean | :number | :string | {:enum, [value()]}
 
+  @typedoc "Represents the name of a member."
+  @typedoc since: "0.3.0"
+  @type tag() :: :boolean | :enum | :number | :string
+
+  @typedoc "Represents every tag the lattice holds, sorted."
+  @typedoc since: "0.3.0"
+  @type tags() :: [tag()]
+
   @typedoc "Represents the value a member is asked about."
   @typedoc since: "0.3.0"
   @type value() :: term()
@@ -74,6 +82,27 @@ defmodule Masonree.Type do
       {module, payload} -> module.admits?(payload, value)
       :error -> false
     end
+  end
+
+  @doc """
+  Returns the tags the lattice holds, sorted.
+
+  The one place that names the set. Anything needing to know the members asks
+  here rather than keeping a list of its own, so a member joins the lattice once
+  and is known everywhere.
+
+  ## Example
+
+      iex> list_tags()
+      [:boolean, :enum, :number, :string]
+
+  """
+  @doc since: "0.3.0"
+  @spec list_tags() :: tags()
+  def list_tags() do
+    @modules
+    |> Map.keys()
+    |> Enum.sort()
   end
 
   @spec resolve(t()) :: :error | {module(), payload()}

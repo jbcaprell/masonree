@@ -46,4 +46,12 @@ defmodule Masonree.TypeTest do
       assert admits?(:bool, nil)
     end
   end
+
+  describe "list_tags/0" do
+    import Type, only: [list_tags: 0]
+
+    test "returns every tag the lattice holds, sorted" do
+      assert list_tags() == ~W[boolean enum number string]a
+    end
+  end
 end
