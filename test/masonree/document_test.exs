@@ -39,9 +39,77 @@ defmodule Masonree.DocumentTest do
     ]
   }
 
+  @spec build_bare(pos_integer()) :: Node.serialized()
+  defp build_bare(1), do: %{"type" => "test/example"}
+
+  defp build_bare(levels) do
+    children = for _child <- 1..3, do: build_bare(levels - 1)
+
+    %{"children" => children, "type" => "test/example"}
+  end
+
+  @spec descend(Node.t()) :: [Node.t()]
+  defp descend(node) do
+    [node | Enum.flat_map(node.children, &descend/1)]
+  end
+
+  @spec flatten(Document.t()) :: [Node.t()]
+  defp flatten(document), do: Enum.flat_map(document.root, &descend/1)
+
   describe "%Document{}" do
     test "is an empty root and nothing else" do
       assert Map.from_struct(%Document{}) == %{root: []}
+    end
+  end
+
+  describe "from_map!/1" do
+    import Document, only: [from_map!: 1]
+
+    test "fills every absence" do
+      assert from_map!(%{}) == %Document{root: []}
+    end
+
+    test "raises on a document that is not a map" do
+      serialized = JSON.decode!("\"n_5Y3sMqERkI2m\"")
+
+      assert_raise FunctionClauseError, fn -> from_map!(serialized) end
+    end
+
+    test "raises on a root entry that is not a node" do
+      serialized = %{"root" => [%{"kind" => "test/example"}]}
+
+      assert_raise FunctionClauseError, fn -> from_map!(serialized) end
+    end
+
+    test "raises on a struct, which is a map and not an envelope" do
+      [serialized] = Enum.take([%Document{}], 1)
+
+      assert_raise FunctionClauseError, fn -> from_map!(serialized) end
+    end
+
+    test "round-trips a nested document exactly" do
+      serialized = Document.to_map(@document)
+
+      assert from_map!(serialized) == @document
+    end
+
+    test "round-trips a page-sized document exactly" do
+      root = for _root <- 1..3, do: build_bare(5)
+      document = from_map!(%{"root" => root})
+      nodes = flatten(document)
+      written = Document.to_map(document)
+
+      assert length(nodes) == 363
+      assert length(document.root) == 3
+      assert from_map!(written) == document
+    end
+
+    test "treats a malformed root value as absent" do
+      serialized = %{
+        "root" => %{"id" => "n_KuCOuIHzdILO", "type" => "test/example"}
+      }
+
+      assert from_map!(serialized) == %Document{root: []}
     end
   end
 

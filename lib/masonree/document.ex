@@ -56,6 +56,62 @@ defmodule Masonree.Document do
   @type t() :: %__MODULE__{root: [Node.t()]}
 
   @doc """
+  Reads a document from `serialized`, tolerating every absence with a default.
+
+  This is the path out of the database, and the shape it reads never passed
+  through this library’s validation. So absence is filled rather than refused: a
+  missing `"root"` becomes `[]`, and so does a `"root"` that is not a list. An
+  empty document is legal, because a page is empty before anything is inserted
+  into it.
+
+  Tolerance stops at `Masonree.Node.from_map!/1`, and is not repeated here. A
+  `"root"` entry that is not a serialized node raises `FunctionClauseError` from
+  inside the node’s reader rather than from this call. The document is tolerant
+  about its own field and delegates the rest, so there is one boundary with one
+  posture instead of two that can drift. The `!` is that promise, and it
+  reserves the bare name for an answering sibling, for the caller that cannot
+  afford a raise.
+
+  Tolerance also stops short of a struct, which raises here rather than being
+  read as an envelope with everything absent. A struct is a map, so a guard that
+  asked only that much would read a `%Masonree.Node{}` as an envelope with no
+  `"root"` key and answer with an empty document — a whole page turned into
+  nothing, silently, by the one shape a caller is most likely to pass here by
+  mistake. An envelope is a decoded jsonb object and is never a struct, so the
+  guard says so.
+
+  ## Examples
+
+      iex> document = %{
+      ...>   "root" => [%{"id" => "n_KuCOuIHzdILO", "type" => "test/example"}]
+      ...> }
+      iex>
+      iex> from_map!(document)
+      %Document{
+        root: [
+          %Node{
+            attributes: %{},
+            children: [],
+            id: "n_KuCOuIHzdILO",
+            preset: nil,
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      iex> from_map!(%{})
+      %Document{root: []}
+
+  """
+  @doc since: "0.3.0"
+  @spec from_map!(serialized()) :: t()
+  def from_map!(serialized)
+      when is_map(serialized) and not is_struct(serialized) do
+    %__MODULE__{root: get_root(serialized)}
+  end
+
+  @doc """
   Returns `document` as a plain map, with string keys.
 
   The envelope is written as an object, not as a bare list, even though it holds
@@ -96,4 +152,15 @@ defmodule Masonree.Document do
   def to_map(document) when is_struct(document, __MODULE__) do
     %{"root" => Enum.map(document.root, &Node.to_map/1)}
   end
+
+  @spec get_root(serialized()) :: [Node.t()]
+  defp get_root(serialized) do
+    serialized
+    |> take_root()
+    |> Enum.map(&Node.from_map!/1)
+  end
+
+  @spec take_root(serialized()) :: [term()]
+  defp take_root(%{"root" => root}) when is_list(root), do: root
+  defp take_root(_serialized), do: []
 end
