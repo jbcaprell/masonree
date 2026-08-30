@@ -47,7 +47,53 @@ defmodule Masonree.Document do
 
   defstruct root: []
 
+  @typedoc "Represents the document as a plain map, the shape that persists."
+  @typedoc since: "0.3.0"
+  @type serialized() :: %{String.t() => term()}
+
   @typedoc "Represents the document."
   @typedoc since: "0.3.0"
   @type t() :: %__MODULE__{root: [Node.t()]}
+
+  @doc """
+  Returns `document` as a plain map, with string keys.
+
+  The envelope is written as an object, not as a bare list, even though it holds
+  one key today. A stored list cannot grow a second field without rewriting
+  every row; a stored object can, and the reader can tolerate the older shape
+  while it does. That is what makes leaving out an envelope version safe rather
+  than merely cheap: the room one would need is here, unoccupied and free.
+
+  The nodes beneath are written by `Masonree.Node.to_map/1`, which states every
+  field including the nils, so a document has one stored shape for every node
+  in it.
+
+  ## Example
+
+      iex> document = %Document{
+      ...>   root: [
+      ...>     %Node{id: "n_2nuJgad8e455", type: "test/example", version: 1}
+      ...>   ]
+      ...> }
+      iex>
+      iex> to_map(document)
+      %{
+        "root" => [
+          %{
+            "attributes" => %{},
+            "children" => [],
+            "id" => "n_2nuJgad8e455",
+            "preset" => nil,
+            "type" => "test/example",
+            "version" => 1
+          }
+        ]
+      }
+
+  """
+  @doc since: "0.3.0"
+  @spec to_map(t()) :: serialized()
+  def to_map(document) when is_struct(document, __MODULE__) do
+    %{"root" => Enum.map(document.root, &Node.to_map/1)}
+  end
 end
