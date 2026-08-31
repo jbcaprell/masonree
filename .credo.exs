@@ -162,7 +162,7 @@
           ".credo.exs",
           ".dialyzer.exs",
           ".formatter.exs",
-          "{lib,test}/**/*.{ex,exs}",
+          "{lib,support,test}/**/*.{ex,exs}",
           "mix.{exs,lock}"
         ]
       },

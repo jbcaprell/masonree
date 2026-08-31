@@ -12,6 +12,8 @@ defmodule Masonree.MixProject do
   @typedoc since: "0.1.0"
   @type project() :: [project_keyword()]
 
+  @typep env() :: :dev | :prod | :test | atom()
+
   @typep project_keyword() ::
            {:app, Application.app()}
            | {:version, String.t()}
@@ -70,13 +72,19 @@ defmodule Masonree.MixProject do
       docs: [groups_for_modules: load_moduledoc_group(env)],
       elixir: "~> 1.20",
       elixirc_options: [warnings_as_errors: true],
+      elixirc_paths: get_elixirc_path(env),
       name: "Masonree",
       start_permanent: env == :prod,
       version: "0.3.0"
     ]
   end
 
-  @spec load_moduledoc_group(atom()) :: nil | Keyword.t([module()])
+  @spec get_elixirc_path(env()) :: [Path.t()]
+  defp get_elixirc_path(:dev), do: get_elixirc_path(:test)
+  defp get_elixirc_path(:test), do: ["support" | get_elixirc_path(:prod)]
+  defp get_elixirc_path(env) when is_atom(env), do: ["lib"]
+
+  @spec load_moduledoc_group(env()) :: nil | Keyword.t([module()])
   defp load_moduledoc_group(:dev) do
     ".boundary.exs"
     |> Code.eval_file()
