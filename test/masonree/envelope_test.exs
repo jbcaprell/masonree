@@ -9,4 +9,12 @@ defmodule Masonree.EnvelopeTest do
   alias Masonree.Envelope
 
   doctest Envelope, import: true
+
+  describe "type/0" do
+    import Envelope, only: [type: 0]
+
+    test "is :map, so the column is jsonb and not text" do
+      assert type() == :map
+    end
+  end
 end

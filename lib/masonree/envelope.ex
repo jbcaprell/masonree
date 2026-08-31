@@ -14,4 +14,26 @@ defmodule Masonree.Envelope do
   is the only piece that has to know the document’s shape.
   """
   @moduledoc since: "0.4.0"
+
+  @typedoc "Represents the database representation the adapter is given."
+  @typedoc since: "0.4.0"
+  @type type() :: :map
+
+  # @impl Ecto.Type
+  @doc """
+  Returns `:map`, the database representation.
+
+  The adapter chooses `json` or `jsonb` from the column, and the choice is the
+  platform’s — a GIN index over a `jsonb` column is what answers which pages use
+  this block, and this library does not own the index either.
+
+  ## Example
+
+      iex> type()
+      :map
+
+  """
+  @doc since: "0.4.0"
+  @spec type() :: type()
+  def type(), do: :map
 end
