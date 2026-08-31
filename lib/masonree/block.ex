@@ -54,7 +54,15 @@ defmodule Masonree.Block do
 
   @typedoc "Represents the markup and everything the block wants said."
   @typedoc since: "0.3.0"
-  @type projection() :: {Rendered.t(), [term()]}
+  @type projection() :: {rendered(), [report()]}
+
+  @typedoc "Represents the markup a block projects."
+  @typedoc since: "0.3.0"
+  @type rendered() :: Rendered.t()
+
+  @typedoc "Represents one thing a block says about its own content."
+  @typedoc since: "0.3.0"
+  @type report() :: term()
 
   @doc "Returns the block’s manifest."
   @doc since: "0.3.0"
