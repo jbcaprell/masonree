@@ -4,13 +4,122 @@ defmodule Masonree.EnvelopeTest do
 
   use ExUnit.Case, async: true
 
+  alias Ecto
   alias Masonree
+  alias MasonreeBench
 
+  alias Ecto.Adapters
+  alias Ecto.Changeset
   alias Masonree.Document
   alias Masonree.Envelope
   alias Masonree.Node
+  alias MasonreeBench.Page
+  alias MasonreeBench.Repo
+
+  alias Adapters.SQL
+
+  alias SQL.Sandbox
 
   doctest Envelope, import: true
+
+  describe "Ecto.Type" do
+    setup do
+      :ok = Sandbox.checkout(Repo)
+    end
+
+    test "casts an envelope into the field through a changeset" do
+      body = %{
+        "root" => [%{"id" => "n_Rele4j97z9QL", "type" => "core/paragraph"}]
+      }
+
+      %Page{}
+      |> Changeset.cast(%{"body" => body}, [:body])
+      |> Repo.insert!()
+
+      assert Repo.one!(Page).body == %Document{
+               root: [
+                 %Node{id: "n_Rele4j97z9QL", type: "core/paragraph", version: 1}
+               ]
+             }
+    end
+
+    test "queries the stored tree as jsonb, not as bytes" do
+      body = %Document{
+        root: [
+          %Node{
+            attributes: %{"content" => "Hello, world!"},
+            id: "n_mBdBEWyfcCEl",
+            type: "core/paragraph",
+            version: 1
+          }
+        ]
+      }
+
+      Repo.insert!(%Page{body: body})
+
+      query =
+        """
+        SELECT body #>> '{root,0,type}', body #>> '{root,0,attributes,content}'
+          FROM page
+        """
+
+      assert %{rows: [["core/paragraph", "Hello, world!"]]} =
+               SQL.query!(Repo, query, [])
+    end
+
+    test "raises at the query on a row the reader refuses" do
+      query = "INSERT INTO page (body) VALUES ($1)"
+      body = %{"root" => [%{"id" => "n_l1OGa7AgrSGz"}]}
+      message = ~r"cannot load .* as type Masonree.Envelope"
+
+      assert %{num_rows: 1} = SQL.query!(Repo, query, [body])
+
+      assert_raise ArgumentError, message, fn -> Repo.one!(Page) end
+    end
+
+    test "refuses through a changeset what the reader refuses" do
+      body = %{"root" => [%{"id" => "n_3O6WZwhROF8v"}]}
+
+      changeset = Changeset.cast(%Page{}, %{"body" => body}, [:body])
+
+      refute changeset.valid?
+
+      assert changeset.errors ==
+               [body: {"is invalid", [type: Envelope, validation: :cast]}]
+    end
+
+    test "stores an empty document as a row, not an absence" do
+      Repo.insert!(%Page{body: %Document{}})
+
+      assert Repo.one!(Page).body == %Document{}
+    end
+
+    test "survives a real insert and a real read" do
+      body = %Document{
+        root: [
+          %Node{
+            attributes: %{"width" => "wide"},
+            children: [
+              %Node{
+                attributes: %{"content" => "Stored"},
+                id: "n_1In7_0UAvWz5",
+                preset: "loud",
+                type: "core/paragraph",
+                version: 1
+              }
+            ],
+            id: "n_8QYwiz-CFK_L",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      Repo.insert!(%Page{body: body})
+
+      assert Repo.one!(Page).body == body
+    end
+  end
 
   describe "Envelope" do
     test "declares itself an Ecto.Type, so a schema may name it as a field" do
