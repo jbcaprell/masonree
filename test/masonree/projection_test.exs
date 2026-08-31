@@ -69,7 +69,8 @@ defmodule Masonree.ProjectionTest do
       {rendered, []} = render(document, @blocks, :editor)
 
       assert to_markup(rendered) ==
-               ~S(<p data-mnr="paragraph">Hello, world!</p>)
+               ~S(<p data-mnr="paragraph" data-mnr-id="n_VTS22gkaQ6HW">) <>
+                 ~S(Hello, world!</p>)
     end
 
     test "carries a block’s own findings, stamped with its id" do
@@ -163,6 +164,24 @@ defmodule Masonree.ProjectionTest do
       assert problems == [{:unknown_block, "n_tBhgl2qwXA7K"}]
     end
 
+    test "marks every node of a nest in :editor, not only the root" do
+      document = %Document{
+        root: [
+          %Node{
+            children: [build_paragraph("n_VTS22gkaQ6HW", "Hello, world!")],
+            id: "n_SXo9U3MZlxK1",
+            type: "test/wrapping",
+            version: 1
+          }
+        ]
+      }
+
+      {rendered, []} = render(document, @blocks, :editor)
+
+      assert to_markup(rendered) =~ ~S(data-mnr-id="n_SXo9U3MZlxK1")
+      assert to_markup(rendered) =~ ~S(data-mnr-id="n_VTS22gkaQ6HW")
+    end
+
     test "raises when blocks is not a map" do
       blocks = JSON.decode!("[]")
 
@@ -190,6 +209,16 @@ defmodule Masonree.ProjectionTest do
                  ~S(data-mnr-preset="intro">Hello, world!</p>) <>
                  ~S(<p data-mnr="paragraph" ) <>
                  ~S(data-mnr-preset="outro">Goodbye, world!</p>)
+    end
+
+    test "writes no identity in :public" do
+      document = %Document{
+        root: [build_paragraph("n_VTS22gkaQ6HW", "Hello, world!")]
+      }
+
+      {rendered, []} = render(document, @blocks, :public)
+
+      refute to_markup(rendered) =~ "data-mnr-id"
     end
   end
 

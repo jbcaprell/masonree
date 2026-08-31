@@ -105,9 +105,10 @@ defmodule Masonree.Projection do
 
   `mode` says who the markup is for. It is a parameter rather than two functions
   because it has to reach every node of a nested walk, and a caller that chose
-  per node could render a page half of which an editor cannot select. Its one
-  effect is what reaches `@html_attributes`; the annotation is contributed there
-  in every mode, and the mode’s own supplier lands next.
+  per node could render a page half of which an editor cannot select. The whole
+  of its effect is one assign: both modes carry the annotation, and `:editor`
+  adds the node’s own id as `data-mnr-id`, which is how a click in a browser
+  becomes a node in a session.
   """
   @doc since: "0.3.0"
   @spec render(document(), blocks(), mode()) :: projection()
@@ -159,10 +160,10 @@ defmodule Masonree.Projection do
   end
 
   @spec fill(Node.t(), rendered(), mode(), Manifest.t()) :: Block.assigns()
-  defp fill(node, interior, _mode, manifest) do
+  defp fill(node, interior, mode, manifest) do
     %{
       __changed__: nil,
-      html_attributes: take_annotation(node, manifest),
+      html_attributes: take_html_attributes(node, mode, manifest),
       inner_block: take_slot(interior),
       node: node
     }
@@ -206,6 +207,16 @@ defmodule Masonree.Projection do
 
   defp take_annotation(%Node{preset: preset}, %Manifest{name: name}) do
     [{"data-mnr", take_local_name(name)}, {"data-mnr-preset", preset}]
+  end
+
+  @spec take_html_attributes(Node.t(), mode(), Manifest.t()) ::
+          [{String.t(), String.t()}]
+  defp take_html_attributes(node, :editor, manifest) do
+    Enum.sort([{"data-mnr-id", node.id} | take_annotation(node, manifest)])
+  end
+
+  defp take_html_attributes(node, :public, manifest) do
+    take_annotation(node, manifest)
   end
 
   @spec take_interior(Node.t(), blocks(), mode()) :: projection()
