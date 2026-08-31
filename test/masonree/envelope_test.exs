@@ -68,6 +68,32 @@ defmodule Masonree.EnvelopeTest do
     end
   end
 
+  describe "load/1" do
+    import Envelope, only: [load: 1]
+
+    test "fills every absence the envelope carries" do
+      assert {:ok, document} = load(%{"root" => [%{"type" => "test/example"}]})
+      assert [node] = document.root
+
+      assert {node.attributes, node.children, node.preset, node.version} ==
+               {%{}, [], nil, 1}
+
+      assert String.starts_with?(node.id, "n_")
+    end
+
+    test "reads a missing root as an empty document" do
+      assert load(%{}) == {:ok, %Document{root: []}}
+    end
+
+    test "refuses a list, which is not an envelope" do
+      assert load([]) == :error
+    end
+
+    test "refuses an unreadable envelope with an error, never a raise" do
+      assert load(%{"root" => [%{}]}) == :error
+    end
+  end
+
   describe "type/0" do
     import Envelope, only: [type: 0]
 

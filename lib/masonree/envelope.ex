@@ -23,6 +23,10 @@ defmodule Masonree.Envelope do
   @typedoc since: "0.4.0"
   @type input() :: term()
 
+  @typedoc "Represents a document read, or a shape that is not one."
+  @typedoc since: "0.4.0"
+  @type reading() :: Document.reading()
+
   @typedoc "Represents the document as a plain map, the shape jsonb stores."
   @typedoc since: "0.4.0"
   @type serialized() :: Document.serialized()
@@ -85,6 +89,54 @@ defmodule Masonree.Envelope do
   end
 
   def dump(_value), do: :error
+
+  # @impl Ecto.Type
+  @doc """
+  Returns `{:ok, document}` where `value` is an envelope, or `:error`.
+
+  This is the path out of the database and the reason
+  `Masonree.Document.from_map/1` exists. It fills every absence a stored
+  envelope may carry and refuses only a root entry that is not a node, at any
+  depth — and refuses the page rather than the entry, because a page returned
+  with one subtree missing is worse than one not returned at all.
+
+  It never raises, and that is not a preference. A reader on this path is called
+  on every row that comes back, so a raise would take down a query over a page
+  nobody was asking about. `Masonree.Document.from_map/1` is the answering
+  sibling minted one arc ago for exactly this consumer, before the consumer
+  existed.
+
+  Nor does it migrate. Stepping a stored node forward needs a blocks map, and a
+  caller on this path has no way to reach one — the value is all it is handed.
+  Where the two walks a loaded page owes are composed is a later arc’s subject,
+  and this function’s work ends at the struct.
+
+  A `nil` column is not a document and is not tolerated. A schema that wants an
+  absent page should say so with a nullable field the caller branches on rather
+  than by handing this function an emptiness to interpret.
+
+  ## Examples
+
+      iex> envelope = %{
+      ...>   "root" => [%{"id" => "n_fQnwiIJkHCwf", "type" => "test/example"}]
+      ...> }
+      iex>
+      iex> load(envelope)
+      {
+        :ok,
+        %Document{
+          root: [%Node{id: "n_fQnwiIJkHCwf", type: "test/example", version: 1}]
+        }
+      }
+
+      iex> load([])
+      :error
+
+  """
+  @doc since: "0.4.0"
+  @spec load(input()) :: reading()
+  def load(value) when is_map(value), do: Document.from_map(value)
+  def load(_value), do: :error
 
   # @impl Ecto.Type
   @doc """
