@@ -64,8 +64,10 @@ defmodule Masonree.MixProject do
         {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
         {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
         {:ecto, "~> 3.13"},
+        {:ecto_sql, "~> 3.13", only: [:dev, :test]},
         {:ex_doc, "~> 0.40", only: :dev, runtime: false},
-        {:phoenix_live_view, "~> 1.2"}
+        {:phoenix_live_view, "~> 1.2"},
+        {:postgrex, "~> 0.21", only: [:dev, :test]}
       ],
       deps_path: "dep",
       dialyzer: [ignore_warnings: ".dialyzer.exs"],
