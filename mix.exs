@@ -61,6 +61,7 @@ defmodule Masonree.MixProject do
         {:boundary, "~> 0.10", runtime: false},
         {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
         {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+        {:ecto, "~> 3.13"},
         {:ex_doc, "~> 0.40", only: :dev, runtime: false},
         {:phoenix_live_view, "~> 1.2"}
       ],
