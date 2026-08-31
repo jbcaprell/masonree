@@ -15,6 +15,8 @@ defmodule Masonree.Envelope do
   """
   @moduledoc since: "0.4.0"
 
+  use Ecto.Type
+
   alias Masonree
 
   alias Masonree.Document
@@ -39,7 +41,7 @@ defmodule Masonree.Envelope do
   @typedoc since: "0.4.0"
   @type writing() :: {:ok, serialized()} | :error
 
-  # @impl Ecto.Type
+  @impl Ecto.Type
   @doc """
   Returns `{:ok, document}` where `value` is a document or an envelope.
 
@@ -75,7 +77,7 @@ defmodule Masonree.Envelope do
   def cast(value) when is_map(value), do: Document.from_map(value)
   def cast(_value), do: :error
 
-  # @impl Ecto.Type
+  @impl Ecto.Type
   @doc """
   Returns `{:ok, envelope}` where `value` is a document, or `:error`.
 
@@ -126,7 +128,7 @@ defmodule Masonree.Envelope do
 
   def dump(_value), do: :error
 
-  # @impl Ecto.Type
+  @impl Ecto.Type
   @doc """
   Returns `{:ok, document}` where `value` is an envelope, or `:error`.
 
@@ -174,7 +176,7 @@ defmodule Masonree.Envelope do
   def load(value) when is_map(value), do: Document.from_map(value)
   def load(_value), do: :error
 
-  # @impl Ecto.Type
+  @impl Ecto.Type
   @doc """
   Returns `:map`, the database representation.
 

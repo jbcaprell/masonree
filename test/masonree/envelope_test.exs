@@ -12,6 +12,14 @@ defmodule Masonree.EnvelopeTest do
 
   doctest Envelope, import: true
 
+  describe "Envelope" do
+    test "declares itself an Ecto.Type, so a schema may name it as a field" do
+      attributes = Envelope.__info__(:attributes)
+
+      assert attributes[:behaviour] == [Ecto.Type]
+    end
+  end
+
   describe "cast/1" do
     import Envelope, only: [cast: 1]
 
