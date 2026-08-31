@@ -12,6 +12,51 @@ defmodule Masonree.EnvelopeTest do
 
   doctest Envelope, import: true
 
+  describe "cast/1" do
+    import Envelope, only: [cast: 1]
+
+    test "passes a document through untouched" do
+      document = %Document{
+        root: [%Node{id: "n_MHnhDZRkFLiN", type: "core/paragraph", version: 1}]
+      }
+
+      assert cast(document) == {:ok, document}
+    end
+
+    test "reads an envelope" do
+      envelope = %{
+        "root" => [%{"id" => "n_1VRRqhnB3XSq", "type" => "core/paragraph"}]
+      }
+
+      assert cast(envelope) == {
+               :ok,
+               %Document{
+                 root: [
+                   %Node{
+                     id: "n_1VRRqhnB3XSq",
+                     type: "core/paragraph",
+                     version: 1
+                   }
+                 ]
+               }
+             }
+    end
+
+    test "refuses a keyword list, which is not an envelope" do
+      assert cast(root: []) == :error
+    end
+
+    test "refuses a struct that is not a document" do
+      node = %Node{id: "n_WEYp4sgKpRpp", type: "test/example", version: 1}
+
+      assert cast(node) == :error
+    end
+
+    test "refuses an envelope the reader refuses" do
+      assert cast(%{"root" => [%{"children" => [%{}]}]}) == :error
+    end
+  end
+
   describe "dump/1" do
     import Envelope, only: [dump: 1]
 

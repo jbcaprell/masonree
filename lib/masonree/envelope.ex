@@ -41,6 +41,42 @@ defmodule Masonree.Envelope do
 
   # @impl Ecto.Type
   @doc """
+  Returns `{:ok, document}` where `value` is a document or an envelope.
+
+  A document passes through untouched, which is the path a caller takes when
+  the tree is already built — the ordinary case, since edits are made against
+  `Masonree.Document`’s own operations and the result is cast, not parsed.
+
+  A map is read as an envelope, so a document arriving as parameters — a JSON
+  request body, a form that carries the tree whole — is accepted without the
+  caller reaching for the reader itself. It is the same read `load/1` performs
+  and refuses the same shapes, because a value that could not have come out of
+  the column has no business going into it.
+
+  Everything else is `:error`, including a keyword list and a struct that is
+  not a document: this module has one representation and does not guess at
+  another.
+
+  ## Examples
+
+      iex> cast(%Document{})
+      {:ok, %Document{root: []}}
+
+      iex> cast(%{"root" => []})
+      {:ok, %Document{root: []}}
+
+      iex> cast("{}")
+      :error
+
+  """
+  @doc since: "0.4.0"
+  @spec cast(input()) :: reading()
+  def cast(%Document{} = value), do: {:ok, value}
+  def cast(value) when is_map(value), do: Document.from_map(value)
+  def cast(_value), do: :error
+
+  # @impl Ecto.Type
+  @doc """
   Returns `{:ok, envelope}` where `value` is a document, or `:error`.
 
   The envelope is `Masonree.Document.to_map/1`’s, with string keys the whole way
