@@ -17,9 +17,11 @@ defmodule Masonree do
   is what makes every other call into it a compile error — a boundary that
   admits whatever the deps list happens to hold is a boundary in name only.
 
-  Nothing is exported yet, because nothing outside this library has shown a
-  need for a name, and an export that anticipates a caller is an export
-  nobody can retire.
+  The export list is a record of observed need and not a published API. It grows
+  in the commit where something outside is shown to require a name, and never in
+  advance of one. `Masonree.Envelope` is the first, because a schema outside
+  this boundary declares a column as it. Nothing in the compiler finds that
+  dependency, so the entry is the only record of it.
   """
   @moduledoc since: "0.1.0"
 
@@ -29,5 +31,6 @@ defmodule Masonree do
       Phoenix.Component,
       Phoenix.HTML,
       Phoenix.LiveView
-    ]
+    ],
+    exports: [Envelope]
 end

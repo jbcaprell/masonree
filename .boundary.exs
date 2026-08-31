@@ -15,5 +15,5 @@
     Masonree.Type.Number,
     Masonree.Type.String
   ],
-  MasonreeBench: [MasonreeBench, MasonreeBench.Repo]
+  MasonreeBench: [MasonreeBench, MasonreeBench.Page, MasonreeBench.Repo]
 ]

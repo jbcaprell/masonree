@@ -1,4 +1,5 @@
 [
+  import_deps: [:ecto],
   inputs: [
     ".{boundary,credo,dialyzer,formatter}.exs",
     "{lib,support,test}/**/*.{ex,exs}",
