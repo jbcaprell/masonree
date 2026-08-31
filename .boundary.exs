@@ -14,5 +14,6 @@
     Masonree.Type.Enum,
     Masonree.Type.Number,
     Masonree.Type.String
-  ]
+  ],
+  MasonreeBench: [MasonreeBench]
 ]
