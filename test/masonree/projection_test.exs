@@ -20,11 +20,12 @@ defmodule Masonree.ProjectionTest do
     "test/wrapping" => __MODULE__.Wrapping
   }
 
-  @spec build_paragraph(Node.id(), String.t()) :: Node.t()
-  defp build_paragraph(id, content) do
+  @spec build_paragraph(Node.id(), String.t(), nil | String.t()) :: Node.t()
+  defp build_paragraph(id, content, preset \\ nil) do
     %Node{
       attributes: %{"content" => content},
       id: id,
+      preset: preset,
       type: "core/paragraph",
       version: 1
     }
@@ -51,12 +52,24 @@ defmodule Masonree.ProjectionTest do
 
       {rendered, problems} = render(document, @blocks, :public)
 
-      assert to_markup(rendered) == "<p>Hello, world!</p>"
+      assert to_markup(rendered) ==
+               ~S(<p data-mnr="paragraph">Hello, world!</p>)
 
       assert problems == [
                {:unknown_block, "n_tBhgl2qwXA7K"},
                {:unrenderable_block, "n_58CfR-5sI0EM"}
              ]
+    end
+
+    test "annotates an editor’s page too" do
+      document = %Document{
+        root: [build_paragraph("n_VTS22gkaQ6HW", "Hello, world!")]
+      }
+
+      {rendered, []} = render(document, @blocks, :editor)
+
+      assert to_markup(rendered) ==
+               ~S(<p data-mnr="paragraph">Hello, world!</p>)
     end
 
     test "carries a block’s own findings, stamped with its id" do
@@ -66,7 +79,9 @@ defmodule Masonree.ProjectionTest do
 
       {rendered, problems} = render(document, @blocks, :public)
 
-      assert to_markup(rendered) == "<aside>Reported!</aside>"
+      assert to_markup(rendered) ==
+               ~S(<aside data-mnr="reporting">Reported!</aside>)
+
       assert problems == [{:reported, "n_IJh1GqtyfU8b", :looked_fine}]
     end
 
@@ -84,7 +99,9 @@ defmodule Masonree.ProjectionTest do
 
       {rendered, []} = render(document, @blocks, :public)
 
-      assert to_markup(rendered) == "<div><p>Hello, world!</p></div>"
+      assert to_markup(rendered) ==
+               ~S(<div data-mnr="wrapping">) <>
+                 ~S(<p data-mnr="paragraph">Hello, world!</p></div>)
     end
 
     test "descends, so a child’s problem surfaces" do
@@ -104,7 +121,9 @@ defmodule Masonree.ProjectionTest do
 
       {rendered, problems} = render(document, @blocks, :public)
 
-      assert to_markup(rendered) == "<p>Hello, world!</p>"
+      assert to_markup(rendered) ==
+               ~S(<p data-mnr="paragraph">Hello, world!</p>)
+
       assert problems == [{:unknown_block, "n_tBhgl2qwXA7K"}]
     end
 
@@ -137,7 +156,10 @@ defmodule Masonree.ProjectionTest do
 
       {rendered, problems} = render(document, @blocks, :public)
 
-      assert to_markup(rendered) == "<p>Hello, world!</p><p>Goodbye, world!</p>"
+      assert to_markup(rendered) ==
+               ~S(<p data-mnr="paragraph">Hello, world!</p>) <>
+                 ~S(<p data-mnr="paragraph">Goodbye, world!</p>)
+
       assert problems == [{:unknown_block, "n_tBhgl2qwXA7K"}]
     end
 
@@ -151,6 +173,23 @@ defmodule Masonree.ProjectionTest do
 
     test "renders nothing and reports nothing for an empty document" do
       assert render(%Document{}, @blocks, :public) == {[], []}
+    end
+
+    test "writes a preset beside the local name" do
+      document = %Document{
+        root: [
+          build_paragraph("n_VTS22gkaQ6HW", "Hello, world!", "intro"),
+          build_paragraph("n_aS5etBThqg3M", "Goodbye, world!", "outro")
+        ]
+      }
+
+      {rendered, []} = render(document, @blocks, :public)
+
+      assert to_markup(rendered) ==
+               ~S(<p data-mnr="paragraph" ) <>
+                 ~S(data-mnr-preset="intro">Hello, world!</p>) <>
+                 ~S(<p data-mnr="paragraph" ) <>
+                 ~S(data-mnr-preset="outro">Goodbye, world!</p>)
     end
   end
 
@@ -201,7 +240,9 @@ defmodule Masonree.ProjectionTest do
         |> to_iodata()
         |> IO.iodata_to_binary()
 
-      assert bytes == "<p>Hello, world!</p><p>Goodbye, world!</p>"
+      assert bytes ==
+               ~S(<p data-mnr="paragraph">Hello, world!</p>) <>
+                 ~S(<p data-mnr="paragraph">Goodbye, world!</p>)
     end
   end
 

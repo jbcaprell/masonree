@@ -14,6 +14,15 @@ defmodule Masonree.Projection do
   of the walk carries markup and problems together, and the caller decides what
   a problem is worth.
 
+  Every block is handed `@html_attributes` and splices it into its root element;
+  the annotation is what the walk puts there. `data-mnr` carries the block’s
+  local name, and `data-mnr-preset` the node’s preset where it has one. Both are
+  contributed in every mode, because a stylesheet selects on them and a visitor
+  is served the stylesheet — and they are contributed rather than written into
+  each block because a literal repeated across every block module would
+  eventually disagree with the manifest that names it, and because a block never
+  learns about its presets.
+
   ## Example
 
       iex> document = %Document{
@@ -32,7 +41,7 @@ defmodule Masonree.Projection do
       iex>
       iex> bytes = to_iodata(rendered)
       iex> IO.iodata_to_binary(bytes)
-      "<p>Hello, world!</p>"
+      "<p data-mnr=\\"paragraph\\">Hello, world!</p>"
 
   """
   @moduledoc since: "0.3.0"
@@ -97,8 +106,8 @@ defmodule Masonree.Projection do
   `mode` says who the markup is for. It is a parameter rather than two functions
   because it has to reach every node of a nested walk, and a caller that chose
   per node could render a page half of which an editor cannot select. Its one
-  effect is what reaches `@html_attributes`, and nothing is contributed there
-  yet — the assign is the contract, and its suppliers land next.
+  effect is what reaches `@html_attributes`; the annotation is contributed there
+  in every mode, and the mode’s own supplier lands next.
   """
   @doc since: "0.3.0"
   @spec render(document(), blocks(), mode()) :: projection()
@@ -149,11 +158,11 @@ defmodule Masonree.Projection do
     Enum.map(rendered, &Phoenix.HTML.Safe.to_iodata/1)
   end
 
-  @spec fill(Node.t(), rendered(), mode()) :: Block.assigns()
-  defp fill(node, interior, _mode) do
+  @spec fill(Node.t(), rendered(), mode(), Manifest.t()) :: Block.assigns()
+  defp fill(node, interior, _mode, manifest) do
     %{
       __changed__: nil,
-      html_attributes: [],
+      html_attributes: take_annotation(node, manifest),
       inner_block: take_slot(interior),
       node: node
     }
@@ -162,7 +171,7 @@ defmodule Masonree.Projection do
   @spec project(Node.t(), module(), blocks(), mode()) :: projection()
   defp project(node, module, blocks, mode) do
     {interior, nested} = take_interior(node, blocks, mode)
-    assigns = fill(node, interior, mode)
+    assigns = fill(node, interior, mode, module.manifest())
     {rendered, reports} = module.render(assigns)
 
     named = Enum.map(reports, &{:reported, node.id, &1})
@@ -190,9 +199,25 @@ defmodule Masonree.Projection do
     end
   end
 
+  @spec take_annotation(Node.t(), Manifest.t()) :: [{String.t(), String.t()}]
+  defp take_annotation(%Node{preset: nil}, %Manifest{name: name}) do
+    [{"data-mnr", take_local_name(name)}]
+  end
+
+  defp take_annotation(%Node{preset: preset}, %Manifest{name: name}) do
+    [{"data-mnr", take_local_name(name)}, {"data-mnr-preset", preset}]
+  end
+
   @spec take_interior(Node.t(), blocks(), mode()) :: projection()
   defp take_interior(node, blocks, mode) do
     render_list(node.children, blocks, mode)
+  end
+
+  @spec take_local_name(Manifest.name()) :: String.t()
+  defp take_local_name(name) do
+    [_namespace, local_name] = String.split(name, "/")
+
+    local_name
   end
 
   @spec take_markup(Node.t(), module(), blocks(), mode()) :: projection()
