@@ -33,7 +33,7 @@ defmodule Masonree.ProjectionTest do
   @spec to_markup(Projection.rendered()) :: String.t()
   defp to_markup(rendered) do
     rendered
-    |> Enum.map(&Phoenix.HTML.Safe.to_iodata/1)
+    |> Projection.to_iodata()
     |> IO.iodata_to_binary()
   end
 
@@ -163,6 +163,45 @@ defmodule Masonree.ProjectionTest do
 
     test "answers true for a block with markup" do
       assert renderable?(Block.Paragraph)
+    end
+  end
+
+  describe "to_iodata/1" do
+    import Projection, only: [render: 3, to_iodata: 1]
+
+    test "raises when rendered is not a list" do
+      rendered = JSON.decode!("{}")
+
+      assert_raise FunctionClauseError, fn ->
+        to_iodata(rendered)
+      end
+    end
+
+    test "writes nothing for an empty projection" do
+      markup =
+        []
+        |> to_iodata()
+        |> IO.iodata_to_binary()
+
+      assert markup == ""
+    end
+
+    test "writes two nodes in document order" do
+      document = %Document{
+        root: [
+          build_paragraph("n_aS5etBThqg3M", "Hello, world!"),
+          build_paragraph("n_ChfDqDjlak39", "Goodbye, world!")
+        ]
+      }
+
+      {rendered, []} = render(document, @blocks, :public)
+
+      bytes =
+        rendered
+        |> to_iodata()
+        |> IO.iodata_to_binary()
+
+      assert bytes == "<p>Hello, world!</p><p>Goodbye, world!</p>"
     end
   end
 

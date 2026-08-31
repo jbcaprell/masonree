@@ -30,7 +30,7 @@ defmodule Masonree.Projection do
       iex> blocks = %{"core/paragraph" => Block.Paragraph}
       iex> {rendered, []} = render(document, blocks, :public)
       iex>
-      iex> bytes = Enum.map(rendered, &Phoenix.HTML.Safe.to_iodata/1)
+      iex> bytes = to_iodata(rendered)
       iex> IO.iodata_to_binary(bytes)
       "<p>Hello, world!</p>"
 
@@ -51,6 +51,10 @@ defmodule Masonree.Projection do
   @typedoc "Represents block names resolved to the modules declaring them."
   @typedoc since: "0.3.0"
   @type blocks() :: %{Manifest.name() => block()}
+
+  @typedoc "Represents the bytes a projection writes to a response."
+  @typedoc since: "0.3.0"
+  @type bytes() :: iodata()
 
   @typedoc "Represents the document under projection."
   @typedoc since: "0.3.0"
@@ -125,6 +129,26 @@ defmodule Masonree.Projection do
     Code.ensure_loaded?(block) and function_exported?(block, :render, 1)
   end
 
+  @doc """
+  Returns `rendered` as `iodata`.
+
+  The seam between markup and a response. Every node goes through
+  `Phoenix.HTML.Safe`, and that happens here so a caller needs to know the name
+  of this library rather than the name of the protocol underneath it.
+
+  ## Example
+
+      iex> bytes = to_iodata([])
+      iex> IO.iodata_to_binary(bytes)
+      ""
+
+  """
+  @doc since: "0.3.0"
+  @spec to_iodata(rendered()) :: bytes()
+  def to_iodata(rendered) when is_list(rendered) do
+    Enum.map(rendered, &Phoenix.HTML.Safe.to_iodata/1)
+  end
+
   @spec fill(Node.t(), rendered(), mode()) :: Block.assigns()
   defp fill(node, interior, _mode) do
     %{
@@ -182,11 +206,11 @@ defmodule Masonree.Projection do
 
   @spec take_slot(rendered()) :: [map()]
   defp take_slot(interior) do
-    inner_block =
-      fn _argument, _assigns ->
-        {:safe, Enum.map(interior, &Phoenix.HTML.Safe.to_iodata/1)}
-      end
-
-    [%{__slot__: :inner_block, inner_block: inner_block}]
+    [
+      %{
+        __slot__: :inner_block,
+        inner_block: fn _argument, _assigns -> {:safe, to_iodata(interior)} end
+      }
+    ]
   end
 end
