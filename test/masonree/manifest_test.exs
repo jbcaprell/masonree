@@ -294,6 +294,66 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_scalars/1" do
+    import Manifest, only: [validate_scalars: 1]
+
+    test "admits a default its own type admits" do
+      manifest = %Manifest{
+        attributes: %{
+          "flag" => %Attribute{default: false, type: :boolean},
+          "text" => %Attribute{default: "", type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_scalars(manifest) == []
+    end
+
+    test "judges no default against a type that does not exist" do
+      manifest = %Manifest{
+        attributes: %{"rank" => %Attribute{default: "true", type: :bool}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_scalars(manifest) == []
+    end
+
+    test "leaves an enum’s default to the membership rule" do
+      manifest = %Manifest{
+        attributes: %{
+          "tag" => %Attribute{default: "h9", type: {:enum, ["h2", "h3"]}}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_scalars(manifest) == []
+    end
+
+    test "refuses a default its own type refuses" do
+      manifest = %Manifest{
+        attributes: %{"rank" => %Attribute{default: "2", type: :number}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_scalars(manifest) ==
+               [{:default_type_mismatch, "test/example", "rank"}]
+    end
+
+    test "treats a nil default as absence, never as a wrong value" do
+      manifest = %Manifest{
+        attributes: %{"rank" => %Attribute{type: :number}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_scalars(manifest) == []
+    end
+  end
+
   describe "validate_types/1" do
     import Manifest, only: [validate_types: 1]
 

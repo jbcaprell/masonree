@@ -63,6 +63,7 @@ defmodule Masonree.Manifest do
           {:bad_attribute_type, name(), key()}
           | {:bad_key_format, name(), key()}
           | {:bad_version, name()}
+          | {:default_type_mismatch, name(), key()}
           | {:duplicate_enum_values, name(), key()}
           | {:empty_enum, name(), key()}
           | {:non_string_keys, name()}
@@ -270,6 +271,35 @@ defmodule Masonree.Manifest do
   end
 
   @doc """
+  Returns a rejection for each scalar attribute whose default its type refuses.
+
+  A default is a stored value waiting to happen, so it is judged exactly as a
+  stored value would be: by asking the type. The check runs only where the type
+  itself is declarable — a malformed declaration reports once, as what it is,
+  and never a second time for a default judged against a type that does not
+  exist, because one fault is one fault. An enum’s default is a membership
+  question rather than a type question and has its own rule; a `nil` default is
+  absence, and absence is never a wrong value.
+
+  ## Example
+
+      iex> validate_scalars(%Manifest{
+      ...>   attributes: %{"rank" => %Attribute{default: "2", type: :number}},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> })
+      [{:default_type_mismatch, "test/example", "rank"}]
+
+  """
+  @doc since: "0.5.0"
+  @spec validate_scalars(t()) :: problems()
+  def validate_scalars(%__MODULE__{attributes: attributes, name: name}) do
+    attributes
+    |> take_attributes(&default_type_mismatch?/1)
+    |> report_attributes(name, :default_type_mismatch)
+  end
+
+  @doc """
   Returns a rejection for each attribute whose type the lattice refuses.
 
   The question is `Masonree.Type.declarable?/1`’s, asked attribute by attribute,
@@ -338,6 +368,13 @@ defmodule Masonree.Manifest do
   @spec bad_key_format?(term()) :: boolean()
   defp bad_key_format?(key) when is_binary(key), do: not Regex.match?(@key, key)
   defp bad_key_format?(_key), do: false
+
+  @spec default_type_mismatch?(Attribute.t()) :: boolean()
+  defp default_type_mismatch?(%Attribute{type: {:enum, _values}}), do: false
+
+  defp default_type_mismatch?(%Attribute{default: default, type: type}) do
+    Type.declarable?(type) and not Type.admits?(type, default)
+  end
 
   @spec duplicate_enum_values?(Attribute.t()) :: boolean()
   defp duplicate_enum_values?(%Attribute{type: {:enum, values}})
