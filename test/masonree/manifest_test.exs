@@ -215,6 +215,60 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_types/1" do
+    import Manifest, only: [validate_types: 1]
+
+    test "admits every type the lattice holds" do
+      manifest = %Manifest{
+        attributes: %{
+          "flag" => %Attribute{type: :boolean},
+          "rank" => %Attribute{type: :number},
+          "tag" => %Attribute{type: {:enum, ["h2", "h3"]}},
+          "text" => %Attribute{type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_types(manifest) == []
+    end
+
+    test "leaves what a payload contains to the declaration’s own rules" do
+      manifest = %Manifest{
+        attributes: %{"tag" => %Attribute{type: {:enum, []}}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_types(manifest) == []
+    end
+
+    test "refuses a payload on a scalar, naming the attribute that errs" do
+      manifest = %Manifest{
+        attributes: %{"text" => %Attribute{type: {:string, []}}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_types(manifest) ==
+               [{:bad_attribute_type, "test/example", "text"}]
+    end
+
+    test "refuses a type outside the lattice, wherever it is declared" do
+      manifest = %Manifest{
+        attributes: %{
+          "one" => %Attribute{type: :bool},
+          "two" => %Attribute{type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_types(manifest) ==
+               [{:bad_attribute_type, "test/example", "one"}]
+    end
+  end
+
   describe "validate_version/1" do
     import Manifest, only: [validate_version: 1]
 

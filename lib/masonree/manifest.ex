@@ -34,11 +34,16 @@ defmodule Masonree.Manifest do
   alias Masonree
 
   alias Masonree.Manifest
+  alias Masonree.Type
 
   alias Manifest.Attribute
 
   @enforce_keys [:name, :version]
   defstruct attributes: %{}, category: nil, label: nil, name: nil, version: nil
+
+  @typedoc "Represents the declarations a block holds, keyed by attribute."
+  @typedoc since: "0.5.0"
+  @type attributes() :: %{key() => Attribute.t()}
 
   @typedoc "Represents an attribute’s key in the manifest."
   @typedoc since: "0.3.0"
@@ -55,7 +60,8 @@ defmodule Masonree.Manifest do
   @typedoc "Represents a rejection, naming the block it was found in."
   @typedoc since: "0.5.0"
   @type problem() ::
-          {:bad_key_format, name(), key()}
+          {:bad_attribute_type, name(), key()}
+          | {:bad_key_format, name(), key()}
           | {:bad_version, name()}
           | {:non_string_keys, name()}
           | {:unnamespaced_name, name()}
@@ -67,7 +73,7 @@ defmodule Masonree.Manifest do
   @typedoc "Represents the manifest."
   @typedoc since: "0.3.0"
   @type t() :: %__MODULE__{
-          attributes: %{key() => Attribute.t()},
+          attributes: attributes(),
           category: nil | String.t(),
           label: nil | String.t(),
           name: name(),
@@ -77,6 +83,8 @@ defmodule Masonree.Manifest do
   @typedoc "Represents the block’s version, a count of its migrations."
   @typedoc since: "0.3.0"
   @type version() :: pos_integer()
+  @typep declaration() :: {key(), Attribute.t()}
+  @typep predicate() :: (Attribute.t() -> boolean())
 
   @key ~r"\A[^[:space:][:cntrl:]]+\z"u
   @name ~r"\A[a-z][a-z0-9-]*/[a-z][a-z0-9-]*\z"
@@ -203,6 +211,38 @@ defmodule Masonree.Manifest do
   end
 
   @doc """
+  Returns a rejection for each attribute whose type the lattice refuses.
+
+  The question is `Masonree.Type.declarable?/1`’s, asked attribute by attribute,
+  and this module adds nothing to the answer: what a type is was never the
+  manifest’s to know, and a list of admissible types kept here would be a second
+  copy of the lattice for the two to disagree over. This check is what makes the
+  lattice’s closure true of a declaration at the author’s compile rather than of
+  a stored value at a visitor’s read — `:integer` refused here costs an author a
+  recompile, where admitted it would cost a client a page.
+
+  What a well-shaped payload contains is not judged here. `{:enum, []}` declares
+  a legible type with no usable values, and emptiness has its own name.
+
+  ## Example
+
+      iex> validate_types(%Manifest{
+      ...>   attributes: %{"tag" => %Attribute{type: :bool}},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> })
+      [{:bad_attribute_type, "test/example", "tag"}]
+
+  """
+  @doc since: "0.5.0"
+  @spec validate_types(t()) :: problems()
+  def validate_types(%__MODULE__{attributes: attributes, name: name}) do
+    attributes
+    |> take_attributes(&bad_attribute_type?/1)
+    |> report_attributes(name, :bad_attribute_type)
+  end
+
+  @doc """
   Returns the rejection where `manifest`’s version is not a positive integer.
 
   A version counts the migrations a node of this type may have to walk, so the
@@ -231,12 +271,22 @@ defmodule Masonree.Manifest do
     [{:bad_version, name}]
   end
 
+  @spec bad_attribute_type?(Attribute.t()) :: boolean()
+  defp bad_attribute_type?(%Attribute{type: type}) do
+    not Type.declarable?(type)
+  end
+
   @spec bad_key_format?(term()) :: boolean()
   defp bad_key_format?(key) when is_binary(key), do: not Regex.match?(@key, key)
   defp bad_key_format?(_key), do: false
 
   @spec non_string_key?(term()) :: boolean()
   defp non_string_key?(key), do: not is_binary(key)
+
+  @spec report_attributes([declaration()], name(), atom()) :: problems()
+  defp report_attributes(declarations, name, problem) do
+    for {key, _attribute} <- declarations, do: {problem, name, key}
+  end
 
   @spec report_format([key()], name()) :: problems()
   defp report_format(keys, name) do
@@ -250,6 +300,11 @@ defmodule Masonree.Manifest do
   @spec report_keys([term()], name()) :: problems()
   defp report_keys([], _name), do: []
   defp report_keys(_keys, name), do: [{:non_string_keys, name}]
+
+  @spec take_attributes(attributes(), predicate()) :: [declaration()]
+  defp take_attributes(attributes, predicate) do
+    Enum.filter(attributes, fn {_key, attribute} -> predicate.(attribute) end)
+  end
 
   @spec take_namespace([String.t()]) :: nil | namespace()
   defp take_namespace([namespace, local_name])
