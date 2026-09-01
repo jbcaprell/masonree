@@ -141,6 +141,43 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_keys/1" do
+    import Manifest, only: [validate_keys: 1]
+
+    test "admits a manifest whose keys are all strings" do
+      manifest = %Manifest{
+        attributes: %{"content" => %Attribute{type: :string}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_keys(manifest) == []
+    end
+
+    test "refuses an integer key the same as an atom one" do
+      manifest = %Manifest{
+        attributes: %{1 => %Attribute{type: :string}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_keys(manifest) == [{:non_string_keys, "test/example"}]
+    end
+
+    test "reports once however many keys offend" do
+      manifest = %Manifest{
+        attributes: %{
+          :content => %Attribute{type: :string},
+          :tag => %Attribute{type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_keys(manifest) == [{:non_string_keys, "test/example"}]
+    end
+  end
+
   describe "validate_name/1" do
     import Manifest, only: [validate_name: 1]
 

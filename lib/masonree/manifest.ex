@@ -57,6 +57,7 @@ defmodule Masonree.Manifest do
   @type problem() ::
           {:bad_key_format, name(), key()}
           | {:bad_version, name()}
+          | {:non_string_keys, name()}
           | {:unnamespaced_name, name()}
 
   @typedoc "Represents every rejection found."
@@ -141,6 +142,35 @@ defmodule Masonree.Manifest do
   end
 
   @doc """
+  Returns the rejection where any attribute key is not a string.
+
+  An attribute key is a jsonb key, and jsonb keys are strings: an atom or an
+  integer written here would be restrung by the column into something no
+  manifest declares, so the declaration is refused before storage can
+  reinterpret it. The rejection is a single two-tuple however many keys offend,
+  because a manifest written with atom keys is usually written with atom keys
+  throughout, and naming one invites fixing one.
+
+  ## Example
+
+      iex> validate_keys(%Manifest{
+      ...>   attributes: %{content: %Attribute{type: :string}},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> })
+      [{:non_string_keys, "test/example"}]
+
+  """
+  @doc since: "0.5.0"
+  @spec validate_keys(t()) :: problems()
+  def validate_keys(%__MODULE__{attributes: attributes, name: name}) do
+    attributes
+    |> Map.keys()
+    |> Enum.filter(&non_string_key?/1)
+    |> report_keys(name)
+  end
+
+  @doc """
   Returns the rejection where `manifest`’s name is not a namespaced name.
 
   A block’s name is two lowercase halves split by one `/` — a namespace and a
@@ -205,6 +235,9 @@ defmodule Masonree.Manifest do
   defp bad_key_format?(key) when is_binary(key), do: not Regex.match?(@key, key)
   defp bad_key_format?(_key), do: false
 
+  @spec non_string_key?(term()) :: boolean()
+  defp non_string_key?(key), do: not is_binary(key)
+
   @spec report_format([key()], name()) :: problems()
   defp report_format(keys, name) do
     for key <- keys, do: {:bad_key_format, name, key}
@@ -213,6 +246,10 @@ defmodule Masonree.Manifest do
   @spec report_name(boolean(), name()) :: problems()
   defp report_name(false, name), do: [{:unnamespaced_name, name}]
   defp report_name(true, _name), do: []
+
+  @spec report_keys([term()], name()) :: problems()
+  defp report_keys([], _name), do: []
+  defp report_keys(_keys, name), do: [{:non_string_keys, name}]
 
   @spec take_namespace([String.t()]) :: nil | namespace()
   defp take_namespace([namespace, local_name])
