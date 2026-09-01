@@ -353,6 +353,43 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_requiredness/1" do
+    import Manifest, only: [validate_requiredness: 1]
+
+    test "admits a default alone, filled where a value is absent" do
+      manifest = %Manifest{
+        attributes: %{"text" => %Attribute{default: "", type: :string}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_requiredness(manifest) == []
+    end
+
+    test "admits requiredness alone, which is what it is for" do
+      manifest = %Manifest{
+        attributes: %{"src" => %Attribute{required: true, type: :string}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_requiredness(manifest) == []
+    end
+
+    test "refuses the pair, whose halves cancel" do
+      manifest = %Manifest{
+        attributes: %{
+          "src" => %Attribute{default: "", required: true, type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_requiredness(manifest) ==
+               [{:required_with_default, "test/example", "src"}]
+    end
+  end
+
   describe "validate_scalars/1" do
     import Manifest, only: [validate_scalars: 1]
 

@@ -68,6 +68,7 @@ defmodule Masonree.Manifest do
           | {:duplicate_enum_values, name(), key()}
           | {:empty_enum, name(), key()}
           | {:non_string_keys, name()}
+          | {:required_with_default, name(), key()}
           | {:unnamespaced_name, name()}
 
   @typedoc "Represents every rejection found."
@@ -303,6 +304,36 @@ defmodule Masonree.Manifest do
   end
 
   @doc """
+  Returns a rejection for each attribute whose requiredness its default cancels.
+
+  `required: true` means exactly one thing: no honest default exists — an image
+  source, a link target, anything whose placeholder would render as a lie. An
+  attribute that also carries a default can never be absent, so its requiredness
+  can never produce a finding: the two declarations, side by side, cancel. The
+  pair is refused rather than left to mean nothing, because a contract that
+  cannot fire teaches its reader a rule the code does not keep.
+
+  ## Example
+
+      iex> validate_requiredness(%Manifest{
+      ...>   attributes: %{
+      ...>     "src" => %Attribute{default: "", required: true, type: :string}
+      ...>   },
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> })
+      [{:required_with_default, "test/example", "src"}]
+
+  """
+  @doc since: "0.5.0"
+  @spec validate_requiredness(t()) :: problems()
+  def validate_requiredness(%__MODULE__{attributes: attributes, name: name}) do
+    attributes
+    |> take_attributes(&required_with_default?/1)
+    |> report_attributes(name, :required_with_default)
+  end
+
+  @doc """
   Returns a rejection for each scalar attribute whose default its type refuses.
 
   A default is a stored value waiting to happen, so it is judged exactly as a
@@ -450,6 +481,10 @@ defmodule Masonree.Manifest do
   @spec report_keys([term()], name()) :: problems()
   defp report_keys([], _name), do: []
   defp report_keys(_keys, name), do: [{:non_string_keys, name}]
+
+  @spec required_with_default?(Attribute.t()) :: boolean()
+  defp required_with_default?(%Attribute{default: nil}), do: false
+  defp required_with_default?(%Attribute{required: required}), do: required
 
   @spec take_attributes(attributes(), predicate()) :: [declaration()]
   defp take_attributes(attributes, predicate) do
