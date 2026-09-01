@@ -8,20 +8,20 @@ defmodule Masonree.Projection do
   rather than on the behaviour every block implements. A block that could reach
   its siblings would be a block no developer could write alone.
 
-  A node that cannot become markup is reported, never raised. A page is mostly
-  other people’s content, and one unknown type or one block that declares no
-  markup should cost the reader that node and not the page — so every path out
-  of the walk carries markup and problems together, and the caller decides what
-  a problem is worth.
+  A node whose block cannot be found, and a node whose block declares no markup,
+  are reported rather than raised. A page is mostly other people’s content, and
+  one such node should cost the reader that node and not the page — so every
+  path out of the walk carries markup and problems together, and the caller
+  decides what a problem is worth.
 
-  Every block is handed `@html_attributes` and splices it into its root element;
-  the annotation is what the walk puts there. `data-mnr` carries the block’s
-  local name, and `data-mnr-preset` the node’s preset where it has one. Both are
-  contributed in every mode, because a stylesheet selects on them and a visitor
-  is served the stylesheet — and they are contributed rather than written into
-  each block because a literal repeated across every block module would
-  eventually disagree with the manifest that names it, and because a block never
-  learns about its presets.
+  That posture does not yet reach a node whose stored values are the wrong
+  shape. A block is handed what the column held, and a value its markup cannot
+  render raises from inside the template, taking the page the reporting was
+  written to protect. Judging stored values against the manifest that declares
+  them, and repairing what does not conform, are later strata; until they stand
+  between the column and this walk, a caller rendering content this library has
+  not judged is rendering it unguarded, and the guarantee above is the one for
+  blocks rather than the one for values.
 
   ## Example
 
