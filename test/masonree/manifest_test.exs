@@ -63,6 +63,82 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate/1" do
+    import Manifest, only: [validate: 1]
+
+    test "answers an empty report for a well-formed manifest" do
+      manifest = %Manifest{
+        attributes: %{
+          "content" => %Attribute{default: "", role: :content, type: :string},
+          "tag" => %Attribute{
+            default: "h2",
+            role: :chrome,
+            type: {:enum, ["h2", "h3"]}
+          }
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate(manifest) == []
+    end
+
+    test "reports every fault in one pass, not the first it meets" do
+      manifest = %Manifest{
+        attributes: %{
+          "content" => %Attribute{role: :content, type: :bool},
+          "src" => %Attribute{
+            default: "",
+            required: true,
+            role: :content,
+            type: :string
+          }
+        },
+        name: "example",
+        version: 1
+      }
+
+      assert validate(manifest) == [
+               {:unnamespaced_name, "example"},
+               {:bad_attribute_type, "example", "content"},
+               {:required_with_default, "example", "src"}
+             ]
+    end
+
+    test "reports one fault once, as what it is" do
+      manifest = %Manifest{
+        attributes: %{
+          "rank" => %Attribute{default: "2", role: :chrome, type: :bool}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate(manifest) ==
+               [{:bad_attribute_type, "test/example", "rank"}]
+    end
+
+    test "sorts the same report above the flat map’s 32-key boundary" do
+      declare = fn index ->
+        {
+          "key-#{index}",
+          %Attribute{default: index, role: :chrome, type: :string}
+        }
+      end
+
+      manifest = %Manifest{
+        attributes: Map.new(1..40, declare),
+        name: "test/example",
+        version: 1
+      }
+
+      report = validate(manifest)
+
+      assert length(report) == 40
+      assert report == Enum.sort(report)
+    end
+  end
+
   describe "validate_defaults/1" do
     import Manifest, only: [validate_defaults: 1]
 

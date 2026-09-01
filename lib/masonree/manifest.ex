@@ -123,6 +123,56 @@ defmodule Masonree.Manifest do
   end
 
   @doc """
+  Returns every rejection `manifest` carries, sorted, or `[]` where well formed.
+
+  Every check runs and every fault is reported: a manifest with four faults
+  names four, and an author reading a build failure fixes them in one pass
+  rather than one compile each. One fault is still one rejection — a malformed
+  type is never reported a second time as the default judged against it — and
+  the report is sorted, so it is the same list whatever order the attribute map
+  iterates in, which above 32 keys is not the order it was written in.
+
+  Sorting is by term order, which compares tuples by size before contents, so
+  every block-level problem precedes every attribute-level one and a reader
+  meets this manifest is wrong before this attribute is wrong. That falls out of
+  tuple sizing rather than being arranged, and it is the order worth having.
+
+  Only what a block can know about itself is checked. Whether a name is unique,
+  or collides with another block’s — anything needing a second block to answer —
+  belongs to whatever holds the blocks, not here.
+
+  ## Examples
+
+      iex> validate(%Manifest{name: "test/example", version: 1})
+      []
+
+      iex> validate(%Manifest{name: "example", version: 0})
+      [{:bad_version, "example"}, {:unnamespaced_name, "example"}]
+
+  """
+  @doc since: "0.5.0"
+  @spec validate(t()) :: problems()
+  def validate(manifest) when is_struct(manifest, __MODULE__) do
+    reports = [
+      validate_defaults(manifest),
+      validate_duplicates(manifest),
+      validate_enums(manifest),
+      validate_format(manifest),
+      validate_keys(manifest),
+      validate_name(manifest),
+      validate_requiredness(manifest),
+      validate_roles(manifest),
+      validate_scalars(manifest),
+      validate_types(manifest),
+      validate_version(manifest)
+    ]
+
+    reports
+    |> Enum.concat()
+    |> Enum.sort()
+  end
+
+  @doc """
   Returns a rejection for each enum attribute whose default its values refuse.
 
   The membership question, asked of the declaration about itself: an enum admits
