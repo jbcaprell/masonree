@@ -101,8 +101,11 @@ defmodule Masonree.Type do
   judges the declaration a block author wrote, before any value exists. A scalar
   member is declarable bare and only bare — `{:boolean, []}` carries a payload
   where none belongs — and an enum is declarable exactly when its payload is a
-  list. What a well-shaped payload must contain is not answered here: whether
-  an enum’s list is empty, or repeats itself, is a rule about a usable
+  list. An explicit `nil` payload is refused before any member is asked: a
+  member reads `{:boolean, nil}` exactly as it reads the bare form, so the
+  dispatcher, which can see the difference, is where a `nil`-payload tuple stops
+  being a type. What a well-shaped payload must contain is not answered here:
+  whether an enum’s list is empty, or repeats itself, is a rule about a usable
   declaration rather than a legible one, and it belongs to the module that
   judges declarations.
 
@@ -152,6 +155,8 @@ defmodule Masonree.Type do
   end
 
   @spec resolve(t()) :: :error | {module(), payload()}
+  defp resolve({_tag, nil}), do: :error
+
   defp resolve({tag, payload}) when is_atom(tag) do
     case Map.fetch(@modules, tag) do
       {:ok, module} -> {module, payload}

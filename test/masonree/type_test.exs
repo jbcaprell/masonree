@@ -36,6 +36,12 @@ defmodule Masonree.TypeTest do
       refute admits?({:enum, ["dark", "light"]}, "vermilion")
     end
 
+    test "refuses a nil-payload tuple, which is not a type" do
+      refute admits?({:boolean, nil}, true)
+      refute admits?({:number, nil}, 3)
+      refute admits?({:string, nil}, "Hello, world!")
+    end
+
     test "refuses a type the lattice does not hold" do
       refute admits?(:bool, true)
       refute admits?({:bool, true}, true)
@@ -63,6 +69,12 @@ defmodule Masonree.TypeTest do
       refute declarable?(:bool)
       refute declarable?({:choice, []})
       refute declarable?("boolean")
+    end
+
+    test "refuses an explicit nil payload, which the bare form is not" do
+      refute declarable?({:boolean, nil})
+      refute declarable?({:number, nil})
+      refute declarable?({:string, nil})
     end
   end
 
