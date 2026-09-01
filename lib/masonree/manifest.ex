@@ -63,6 +63,7 @@ defmodule Masonree.Manifest do
           {:bad_attribute_type, name(), key()}
           | {:bad_key_format, name(), key()}
           | {:bad_version, name()}
+          | {:default_outside_enum, name(), key()}
           | {:default_type_mismatch, name(), key()}
           | {:duplicate_enum_values, name(), key()}
           | {:empty_enum, name(), key()}
@@ -116,6 +117,37 @@ defmodule Masonree.Manifest do
     name
     |> String.split("/")
     |> take_namespace()
+  end
+
+  @doc """
+  Returns a rejection for each enum attribute whose default its values refuse.
+
+  The membership question, asked of the declaration about itself: an enum admits
+  exactly what its list holds, so a default outside the list would be written
+  into a node as a value the attribute then refuses — a declaration quarreling
+  with itself, caught before either half can win. Membership is the whole
+  comparison, because an enum has no base type for a default to mismatch. A
+  `nil` default is absence and absence is never wrong; a payload that is not a
+  list is a different fault, reported once, as itself.
+
+  ## Example
+
+      iex> validate_defaults(%Manifest{
+      ...>   attributes: %{
+      ...>     "tag" => %Attribute{default: "h9", type: {:enum, ["h2", "h3"]}}
+      ...>   },
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> })
+      [{:default_outside_enum, "test/example", "tag"}]
+
+  """
+  @doc since: "0.5.0"
+  @spec validate_defaults(t()) :: problems()
+  def validate_defaults(%__MODULE__{attributes: attributes, name: name}) do
+    attributes
+    |> take_attributes(&default_outside_enum?/1)
+    |> report_attributes(name, :default_outside_enum)
   end
 
   @doc """
@@ -390,6 +422,16 @@ defmodule Masonree.Manifest do
 
   @spec non_string_key?(term()) :: boolean()
   defp non_string_key?(key), do: not is_binary(key)
+
+  @spec default_outside_enum?(Attribute.t()) :: boolean()
+  defp default_outside_enum?(%Attribute{default: nil}), do: false
+
+  defp default_outside_enum?(%Attribute{type: {:enum, values}} = attribute)
+       when is_list(values) do
+    attribute.default not in values
+  end
+
+  defp default_outside_enum?(_attribute), do: false
 
   @spec report_attributes([declaration()], name(), atom()) :: problems()
   defp report_attributes(declarations, name, problem) do

@@ -63,6 +63,65 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_defaults/1" do
+    import Manifest, only: [validate_defaults: 1]
+
+    test "admits a default the enum holds" do
+      manifest = %Manifest{
+        attributes: %{
+          "tag" => %Attribute{default: "h2", type: {:enum, ["h2", "h3"]}}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_defaults(manifest) == []
+    end
+
+    test "leaves a payload that is not a list to its own rejection" do
+      manifest = %Manifest{
+        attributes: %{"tag" => %Attribute{default: "h2", type: {:enum, nil}}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_defaults(manifest) == []
+    end
+
+    test "leaves a scalar’s default to the type rule" do
+      manifest = %Manifest{
+        attributes: %{"rank" => %Attribute{default: "2", type: :number}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_defaults(manifest) == []
+    end
+
+    test "refuses a default the enum does not hold" do
+      manifest = %Manifest{
+        attributes: %{
+          "tag" => %Attribute{default: "h9", type: {:enum, ["h2", "h3"]}}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_defaults(manifest) ==
+               [{:default_outside_enum, "test/example", "tag"}]
+    end
+
+    test "treats a nil default as absence, whatever the values" do
+      manifest = %Manifest{
+        attributes: %{"tag" => %Attribute{type: {:enum, ["h2", "h3"]}}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_defaults(manifest) == []
+    end
+  end
+
   describe "validate_duplicates/1" do
     import Manifest, only: [validate_duplicates: 1]
 
