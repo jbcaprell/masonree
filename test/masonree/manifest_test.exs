@@ -62,4 +62,41 @@ defmodule Masonree.ManifestTest do
       assert get_namespace("core/paragraph") == "core"
     end
   end
+
+  describe "validate_name/1" do
+    import Manifest, only: [validate_name: 1]
+
+    test "admits lowercase letters, digits and hyphens in either half" do
+      assert validate_name(%Manifest{name: "test-1/example-2", version: 1}) ==
+               []
+    end
+
+    test "refuses a doubled separator, which hides an empty half" do
+      assert validate_name(%Manifest{name: "test//example", version: 1}) ==
+               [{:unnamespaced_name, "test//example"}]
+    end
+
+    test "refuses a name that carries no namespace at all" do
+      assert validate_name(%Manifest{name: "example", version: 1}) ==
+               [{:unnamespaced_name, "example"}]
+    end
+
+    test "refuses a trailing newline, which prints as the name it is not" do
+      assert validate_name(%Manifest{name: "test/example\n", version: 1}) ==
+               [{:unnamespaced_name, "test/example\n"}]
+    end
+
+    test "refuses an uppercase letter, so a namespace has one spelling" do
+      assert validate_name(%Manifest{name: "Test/example", version: 1}) ==
+               [{:unnamespaced_name, "Test/example"}]
+    end
+
+    test "refuses whitespace anywhere in the name" do
+      assert validate_name(%Manifest{name: " /example", version: 1}) ==
+               [{:unnamespaced_name, " /example"}]
+
+      assert validate_name(%Manifest{name: "test/exa mple", version: 1}) ==
+               [{:unnamespaced_name, "test/exa mple"}]
+    end
+  end
 end
