@@ -100,10 +100,13 @@ defmodule Masonree.Manifest do
   Returns the namespace of `name`, or `nil` where it carries none.
 
   A name is namespaced only when a single `/` splits it into two non-empty
-  halves. The reading is deliberately tolerant: this question is also asked
-  about `type` strings read out of stored content, which never passed through
-  any judgment, so it answers about any binary rather than assuming a
-  well-formed one.
+  halves. The reading is deliberately tolerant, and the tolerance is for a
+  caller that does not exist yet: the same question will be put to `type`
+  strings read out of stored content, which never passed through any judgment,
+  so this answers about any binary rather than assuming a well-formed one.
+  Nothing in the library asks it that way today — `validate_name/1` judges a
+  declaration a person wrote, and judges it strictly — so until that stratum
+  stands, the tolerance is a shape held open and not a service rendered.
 
   ## Examples
 
