@@ -60,16 +60,16 @@ defmodule Masonree.Manifest do
   @typedoc "Represents a rejection, naming the block it was found in."
   @typedoc since: "0.5.0"
   @type problem() ::
-          {:bad_attribute_type, name(), key()}
+          {:bad_attribute_type, name(), term()}
           | {:bad_key_format, name(), key()}
           | {:bad_version, name()}
-          | {:default_outside_enum, name(), key()}
-          | {:default_type_mismatch, name(), key()}
-          | {:duplicate_enum_values, name(), key()}
-          | {:empty_enum, name(), key()}
+          | {:default_outside_enum, name(), term()}
+          | {:default_type_mismatch, name(), term()}
+          | {:duplicate_enum_values, name(), term()}
+          | {:empty_enum, name(), term()}
           | {:non_string_keys, name()}
-          | {:required_with_default, name(), key()}
-          | {:undeclared_role, name(), key()}
+          | {:required_with_default, name(), term()}
+          | {:undeclared_role, name(), term()}
           | {:unnamespaced_name, name()}
 
   @typedoc "Represents every rejection found."
