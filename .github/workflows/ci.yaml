@@ -46,10 +46,10 @@ jobs:
       - run: mix test
     strategy:
       matrix:
-        elixir-version: [1.20.3]
+        elixir-version: [1.20.4]
         os: [ubuntu-24.04]
-        otp-version: [29.0.5]
-        postgres: ["postgres:18.4"]
+        otp-version: [29.0.6]
+        postgres: ["postgres:17.11"]
 
 name: CI
 
