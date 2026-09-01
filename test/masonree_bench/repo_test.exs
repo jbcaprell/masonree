@@ -14,6 +14,26 @@ defmodule MasonreeBench.RepoTest do
 
   alias SQL.Sandbox
 
+  @variables [
+    "MASONREE_BENCH_DATABASE",
+    "MASONREE_BENCH_HOSTNAME",
+    "MASONREE_BENCH_PASSWORD",
+    "MASONREE_BENCH_PORT",
+    "MASONREE_BENCH_USERNAME"
+  ]
+
+  @spec restore([String.t()]) :: :ok
+  defp restore(variables) do
+    held = Map.new(variables, &{&1, System.get_env(&1)})
+
+    on_exit(fn ->
+      Enum.each(held, fn
+        {variable, nil} -> System.delete_env(variable)
+        {variable, value} -> System.put_env(variable, value)
+      end)
+    end)
+  end
+
   describe "init/2" do
     import Repo, only: [init: 2]
 
@@ -38,10 +58,7 @@ defmodule MasonreeBench.RepoTest do
     end
 
     test "reads every connection value from the environment" do
-      on_exit(fn ->
-        System.delete_env("MASONREE_BENCH_DATABASE")
-        System.delete_env("MASONREE_BENCH_PORT")
-      end)
+      restore(~W[MASONREE_BENCH_DATABASE MASONREE_BENCH_PORT])
 
       System.put_env("MASONREE_BENCH_DATABASE", "bench_probe")
       System.put_env("MASONREE_BENCH_PORT", "5555")
@@ -59,6 +76,9 @@ defmodule MasonreeBench.RepoTest do
     end
 
     test "takes the environment’s defaults when nothing overrides them" do
+      restore(@variables)
+      Enum.each(@variables, &System.delete_env/1)
+
       {:ok, configuration} = init(:runtime, [])
 
       assert {configuration[:database], configuration[:hostname],
