@@ -15,7 +15,9 @@ defmodule Masonree.Block.Paragraph do
   use Masonree.Block
 
   @manifest %Manifest{
-    attributes: %{"content" => %Attribute{default: "", type: :string}},
+    attributes: %{
+      "content" => %Attribute{default: "", role: :content, type: :string}
+    },
     category: "text",
     label: "Paragraph",
     name: "core/paragraph",

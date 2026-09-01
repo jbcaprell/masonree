@@ -19,9 +19,9 @@ defmodule Masonree.Manifest.AttributeTest do
       assert_raise ArgumentError, message, fn -> struct!(Attribute, []) end
     end
 
-    test "supplies no default, and is not required" do
+    test "supplies no default, no role, and is not required" do
       assert Map.from_struct(%Attribute{type: :string}) ==
-               %{default: nil, required: false, type: :string}
+               %{default: nil, required: false, role: nil, type: :string}
     end
   end
 end

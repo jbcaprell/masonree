@@ -17,19 +17,29 @@ defmodule Masonree.Manifest.Attribute do
   of the declaration and not of this struct, which accepts the pair; refusing it
   is a validator’s work.
 
+  `role` says whether the attribute is content — what the page says — or chrome
+  — how it presents. Nothing mechanical can tell a headline from a layout flag,
+  so the author declares the side, and the declaration is contract: which half
+  of a node a sealed container leaves editable hangs on exactly this field. It
+  defaults to `nil` only so a struct can be built a field at a time; an
+  undeclared role is a fault of the declaration, and the rule that refuses it
+  belongs to a validator rather than to this struct.
+
   ## Examples
 
-      iex> %Attribute{required: true, type: :string}
+      iex> %Attribute{required: true, role: :content, type: :string}
       %Attribute{
         default: nil,
         required: true,
+        role: :content,
         type: :string
       }
 
-      iex> %Attribute{default: 1, type: {:enum, [1, 2, 3]}}
+      iex> %Attribute{default: 1, role: :chrome, type: {:enum, [1, 2, 3]}}
       %Attribute{
         default: 1,
         required: false,
+        role: :chrome,
         type: {:enum, [1, 2, 3]}
       }
 
@@ -41,13 +51,14 @@ defmodule Masonree.Manifest.Attribute do
   alias Masonree.Type
 
   @enforce_keys [:type]
-  defstruct default: nil, required: false, type: nil
+  defstruct default: nil, required: false, role: nil, type: nil
 
   @typedoc "Represents the attribute declaration."
   @typedoc since: "0.3.0"
   @type t() :: %__MODULE__{
           default: nil | value(),
           required: boolean(),
+          role: nil | :chrome | :content,
           type: Type.t()
         }
 

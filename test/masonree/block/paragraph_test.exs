@@ -25,7 +25,11 @@ defmodule Masonree.Block.ParagraphTest do
     test "returns the declaration whole" do
       assert manifest() == %Manifest{
                attributes: %{
-                 "content" => %Attribute{default: "", type: :string}
+                 "content" => %Attribute{
+                   default: "",
+                   role: :content,
+                   type: :string
+                 }
                },
                category: "text",
                label: "Paragraph",
