@@ -99,4 +99,26 @@ defmodule Masonree.ManifestTest do
                [{:unnamespaced_name, "test/exa mple"}]
     end
   end
+
+  describe "validate_version/1" do
+    import Manifest, only: [validate_version: 1]
+
+    test "admits any count of migrations a block has actually taken" do
+      assert validate_version(%Manifest{name: "test/example", version: 7}) ==
+               []
+    end
+
+    test "refuses a float, even one that prints as a whole number" do
+      assert validate_version(%Manifest{name: "test/example", version: 1.0}) ==
+               [{:bad_version, "test/example"}]
+    end
+
+    test "refuses zero and below, where the count begins at one" do
+      assert validate_version(%Manifest{name: "test/example", version: 0}) ==
+               [{:bad_version, "test/example"}]
+
+      assert validate_version(%Manifest{name: "test/example", version: -1}) ==
+               [{:bad_version, "test/example"}]
+    end
+  end
 end

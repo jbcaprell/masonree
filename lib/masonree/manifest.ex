@@ -54,7 +54,7 @@ defmodule Masonree.Manifest do
 
   @typedoc "Represents a rejection, naming the block it was found in."
   @typedoc since: "0.5.0"
-  @type problem() :: {:unnamespaced_name, name()}
+  @type problem() :: {:bad_version, name()} | {:unnamespaced_name, name()}
 
   @typedoc "Represents every rejection found."
   @typedoc since: "0.5.0"
@@ -132,6 +132,35 @@ defmodule Masonree.Manifest do
     name
     |> String.match?(@name)
     |> report_name(name)
+  end
+
+  @doc """
+  Returns the rejection where `manifest`’s version is not a positive integer.
+
+  A version counts the migrations a node of this type may have to walk, so the
+  count begins at 1 and moves only when the block’s stored shape does. Zero is
+  as wrong as a float or a string: none of them is a place a migration walk can
+  stand. The struct’s type says `pos_integer()`; this check is what holds a
+  hand-built declaration to it.
+
+  ## Examples
+
+      iex> validate_version(%Manifest{name: "test/example", version: 1})
+      []
+
+      iex> validate_version(%Manifest{name: "test/example", version: 0})
+      [{:bad_version, "test/example"}]
+
+  """
+  @doc since: "0.5.0"
+  @spec validate_version(t()) :: problems()
+  def validate_version(%__MODULE__{version: version})
+      when is_integer(version) and version > 0 do
+    []
+  end
+
+  def validate_version(%__MODULE__{name: name}) do
+    [{:bad_version, name}]
   end
 
   @spec report_name(boolean(), name()) :: problems()
