@@ -31,4 +31,15 @@ defmodule Masonree.Type.EnumTest do
       refute admits?("dark", "dark")
     end
   end
+
+  describe "declarable?/1" do
+    import Type.Enum, only: [declarable?: 1]
+
+    test "declares with a list, and refuses everything else" do
+      assert declarable?([])
+      assert declarable?(["dark", "light"])
+      refute declarable?(nil)
+      refute declarable?("dark")
+    end
+  end
 end

@@ -11,8 +11,10 @@ defmodule Masonree.TypeTest do
   doctest Type, import: true
 
   describe "Type" do
-    test "the lattice asks one question, and every member must answer" do
-      assert Type.behaviour_info(:callbacks) == [admits?: 2]
+    test "the lattice asks two questions, and every member must answer" do
+      callbacks = Type.behaviour_info(:callbacks)
+
+      assert Enum.sort(callbacks) == [admits?: 2, declarable?: 1]
       assert Type.behaviour_info(:optional_callbacks) == []
     end
   end
@@ -44,6 +46,23 @@ defmodule Masonree.TypeTest do
     test "returns true for a nil, whatever the type" do
       assert admits?(:boolean, nil)
       assert admits?(:bool, nil)
+    end
+  end
+
+  describe "declarable?/1" do
+    import Type, only: [declarable?: 1]
+
+    test "puts the declaration to the member" do
+      assert declarable?(:string)
+      assert declarable?({:enum, []})
+      refute declarable?({:string, []})
+      refute declarable?({:enum, nil})
+    end
+
+    test "refuses a type the lattice does not hold" do
+      refute declarable?(:bool)
+      refute declarable?({:choice, []})
+      refute declarable?("boolean")
     end
   end
 

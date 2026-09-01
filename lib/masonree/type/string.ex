@@ -19,4 +19,7 @@ defmodule Masonree.Type.String do
 
   @impl Type
   def admits?(_payload, value), do: is_binary(value)
+
+  @impl Type
+  def declarable?(payload), do: is_nil(payload)
 end

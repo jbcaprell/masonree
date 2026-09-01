@@ -21,4 +21,14 @@ defmodule Masonree.Type.StringTest do
       refute admits?(nil, :hello)
     end
   end
+
+  describe "declarable?/1" do
+    import Type.String, only: [declarable?: 1]
+
+    test "declares bare, and refuses any payload" do
+      assert declarable?(nil)
+      refute declarable?([])
+      refute declarable?("")
+    end
+  end
 end

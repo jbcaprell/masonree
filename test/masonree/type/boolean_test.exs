@@ -20,4 +20,14 @@ defmodule Masonree.Type.BooleanTest do
       refute admits?(nil, 1)
     end
   end
+
+  describe "declarable?/1" do
+    import Type.Boolean, only: [declarable?: 1]
+
+    test "declares bare, and refuses any payload" do
+      assert declarable?(nil)
+      refute declarable?([])
+      refute declarable?(true)
+    end
+  end
 end

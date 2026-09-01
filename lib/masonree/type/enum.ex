@@ -23,4 +23,7 @@ defmodule Masonree.Type.Enum do
   @impl Type
   def admits?(payload, value) when is_list(payload), do: value in payload
   def admits?(_payload, _value), do: false
+
+  @impl Type
+  def declarable?(payload), do: is_list(payload)
 end

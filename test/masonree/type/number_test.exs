@@ -20,4 +20,14 @@ defmodule Masonree.Type.NumberTest do
       refute admits?(nil, true)
     end
   end
+
+  describe "declarable?/1" do
+    import Type.Number, only: [declarable?: 1]
+
+    test "declares bare, and refuses any payload" do
+      assert declarable?(nil)
+      refute declarable?([])
+      refute declarable?(0)
+    end
+  end
 end
