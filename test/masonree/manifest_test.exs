@@ -63,6 +63,40 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_enums/1" do
+    import Manifest, only: [validate_enums: 1]
+
+    test "admits an enum that offers at least one value" do
+      manifest = %Manifest{
+        attributes: %{"tag" => %Attribute{type: {:enum, ["h2"]}}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_enums(manifest) == []
+    end
+
+    test "leaves a payload that is not a list to its own rejection" do
+      manifest = %Manifest{
+        attributes: %{"tag" => %Attribute{type: {:enum, nil}}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_enums(manifest) == []
+    end
+
+    test "refuses an enum with no values to admit" do
+      manifest = %Manifest{
+        attributes: %{"tag" => %Attribute{type: {:enum, []}}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_enums(manifest) == [{:empty_enum, "test/example", "tag"}]
+    end
+  end
+
   describe "validate_format/1" do
     import Manifest, only: [validate_format: 1]
 

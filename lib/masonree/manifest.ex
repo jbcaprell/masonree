@@ -63,6 +63,7 @@ defmodule Masonree.Manifest do
           {:bad_attribute_type, name(), key()}
           | {:bad_key_format, name(), key()}
           | {:bad_version, name()}
+          | {:empty_enum, name(), key()}
           | {:non_string_keys, name()}
           | {:unnamespaced_name, name()}
 
@@ -113,6 +114,35 @@ defmodule Masonree.Manifest do
     name
     |> String.split("/")
     |> take_namespace()
+  end
+
+  @doc """
+  Returns a rejection for each enum attribute declared with no values.
+
+  `{:enum, []}` is legible to the lattice and useless to everything above it: no
+  value a node could hold is admissible under it, no default can satisfy it, and
+  an inspector generated from it would draw a select with nothing to select.
+  Emptiness is a rule about a usable declaration rather than a legible one,
+  which is why the lattice does not refuse it and this function does. A payload
+  that is not a list at all is a different fault with its own name, and is not
+  repeated here.
+
+  ## Example
+
+      iex> validate_enums(%Manifest{
+      ...>   attributes: %{"tag" => %Attribute{type: {:enum, []}}},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> })
+      [{:empty_enum, "test/example", "tag"}]
+
+  """
+  @doc since: "0.5.0"
+  @spec validate_enums(t()) :: problems()
+  def validate_enums(%__MODULE__{attributes: attributes, name: name}) do
+    attributes
+    |> take_attributes(&empty_enum?/1)
+    |> report_attributes(name, :empty_enum)
   end
 
   @doc """
@@ -279,6 +309,10 @@ defmodule Masonree.Manifest do
   @spec bad_key_format?(term()) :: boolean()
   defp bad_key_format?(key) when is_binary(key), do: not Regex.match?(@key, key)
   defp bad_key_format?(_key), do: false
+
+  @spec empty_enum?(Attribute.t()) :: boolean()
+  defp empty_enum?(%Attribute{type: {:enum, []}}), do: true
+  defp empty_enum?(_attribute), do: false
 
   @spec non_string_key?(term()) :: boolean()
   defp non_string_key?(key), do: not is_binary(key)
