@@ -514,6 +514,16 @@ defmodule Masonree.Manifest do
   defp bad_key_format?(key) when is_binary(key), do: not Regex.match?(@key, key)
   defp bad_key_format?(_key), do: false
 
+  @spec default_outside_enum?(Attribute.t()) :: boolean()
+  defp default_outside_enum?(%Attribute{default: nil}), do: false
+
+  defp default_outside_enum?(%Attribute{type: {:enum, values}} = attribute)
+       when is_list(values) do
+    attribute.default not in values
+  end
+
+  defp default_outside_enum?(_attribute), do: false
+
   @spec default_type_mismatch?(Attribute.t()) :: boolean()
   defp default_type_mismatch?(%Attribute{type: {:enum, _values}}), do: false
 
@@ -535,16 +545,6 @@ defmodule Masonree.Manifest do
 
   @spec non_string_key?(term()) :: boolean()
   defp non_string_key?(key), do: not is_binary(key)
-
-  @spec default_outside_enum?(Attribute.t()) :: boolean()
-  defp default_outside_enum?(%Attribute{default: nil}), do: false
-
-  defp default_outside_enum?(%Attribute{type: {:enum, values}} = attribute)
-       when is_list(values) do
-    attribute.default not in values
-  end
-
-  defp default_outside_enum?(_attribute), do: false
 
   @spec report_attributes([declaration()], name(), atom()) :: problems()
   defp report_attributes(declarations, name, problem) do
