@@ -63,6 +63,51 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_duplicates/1" do
+    import Manifest, only: [validate_duplicates: 1]
+
+    test "admits an enum whose values repeat nothing" do
+      manifest = %Manifest{
+        attributes: %{"tag" => %Attribute{type: {:enum, ["h2", "h3"]}}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_duplicates(manifest) == []
+    end
+
+    test "counts strictly, so a float never repeats an integer" do
+      manifest = %Manifest{
+        attributes: %{"rank" => %Attribute{type: {:enum, [1, 1.0]}}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_duplicates(manifest) == []
+    end
+
+    test "leaves a payload that is not a list to its own rejection" do
+      manifest = %Manifest{
+        attributes: %{"tag" => %Attribute{type: {:enum, "h2"}}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_duplicates(manifest) == []
+    end
+
+    test "refuses a repeated value however far apart the copies sit" do
+      manifest = %Manifest{
+        attributes: %{"tag" => %Attribute{type: {:enum, ["h2", "h3", "h2"]}}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_duplicates(manifest) ==
+               [{:duplicate_enum_values, "test/example", "tag"}]
+    end
+  end
+
   describe "validate_enums/1" do
     import Manifest, only: [validate_enums: 1]
 
