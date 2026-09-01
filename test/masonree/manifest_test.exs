@@ -63,6 +63,84 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_format/1" do
+    import Manifest, only: [validate_format: 1]
+
+    test "admits every casing style, because shape is not style" do
+      manifest = %Manifest{
+        attributes: %{
+          "TagName" => %Attribute{type: :string},
+          "dotted.name" => %Attribute{type: :string},
+          "kebab-case" => %Attribute{type: :string},
+          "snake_case" => %Attribute{type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_format(manifest) == []
+    end
+
+    test "leaves a key that is not a string to its own rejection" do
+      manifest = %Manifest{
+        attributes: %{1 => %Attribute{type: :string}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_format(manifest) == []
+    end
+
+    test "names every offending key, not the first it meets" do
+      manifest = %Manifest{
+        attributes: %{
+          "" => %Attribute{type: :string},
+          "tag name" => %Attribute{type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_format(manifest) == [
+               {:bad_key_format, "test/example", ""},
+               {:bad_key_format, "test/example", "tag name"}
+             ]
+    end
+
+    test "refuses a control character wherever it hides" do
+      manifest = %Manifest{
+        attributes: %{"tag\0name" => %Attribute{type: :string}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_format(manifest) ==
+               [{:bad_key_format, "test/example", "tag\0name"}]
+    end
+
+    test "refuses a non-breaking space, which a reader cannot see" do
+      manifest = %Manifest{
+        attributes: %{"tag\u00A0name" => %Attribute{type: :string}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_format(manifest) ==
+               [{:bad_key_format, "test/example", "tag\u00A0name"}]
+    end
+
+    test "refuses a trailing newline, which prints as the key it is not" do
+      manifest = %Manifest{
+        attributes: %{"content\n" => %Attribute{type: :string}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_format(manifest) ==
+               [{:bad_key_format, "test/example", "content\n"}]
+    end
+  end
+
   describe "validate_name/1" do
     import Manifest, only: [validate_name: 1]
 

@@ -54,7 +54,10 @@ defmodule Masonree.Manifest do
 
   @typedoc "Represents a rejection, naming the block it was found in."
   @typedoc since: "0.5.0"
-  @type problem() :: {:bad_version, name()} | {:unnamespaced_name, name()}
+  @type problem() ::
+          {:bad_key_format, name(), key()}
+          | {:bad_version, name()}
+          | {:unnamespaced_name, name()}
 
   @typedoc "Represents every rejection found."
   @typedoc since: "0.5.0"
@@ -74,6 +77,7 @@ defmodule Masonree.Manifest do
   @typedoc since: "0.3.0"
   @type version() :: pos_integer()
 
+  @key ~r"\A[^[:space:][:cntrl:]]+\z"u
   @name ~r"\A[a-z][a-z0-9-]*/[a-z][a-z0-9-]*\z"
 
   @doc """
@@ -100,6 +104,40 @@ defmodule Masonree.Manifest do
     name
     |> String.split("/")
     |> take_namespace()
+  end
+
+  @doc """
+  Returns a rejection for each attribute key of a shape no key may have.
+
+  A key is refused for its shape and never for its style: one or more
+  characters, none of them whitespace and none a control character.
+  `snake_case`, `camelCase`, `kebab-case` and `dotted.name` all pass, and an
+  empty key, a NUL, a non-breaking space and a trailing newline are all refused
+  — the whitespace and control classes are Unicode-wide, because a key pasted
+  out of a design tool can carry U+00A0 where a reader sees an ordinary space.
+
+  Every offending key is named in its own rejection, so an author fixing
+  one is not left to rediscover its sibling on the next compile. A key that is
+  not a string at all is not judged here — that is a different fault with its
+  own name.
+
+  ## Example
+
+      iex> validate_format(%Manifest{
+      ...>   attributes: %{"tag name" => %Attribute{type: :string}},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> })
+      [{:bad_key_format, "test/example", "tag name"}]
+
+  """
+  @doc since: "0.5.0"
+  @spec validate_format(t()) :: problems()
+  def validate_format(%__MODULE__{attributes: attributes, name: name}) do
+    attributes
+    |> Map.keys()
+    |> Enum.filter(&bad_key_format?/1)
+    |> report_format(name)
   end
 
   @doc """
@@ -161,6 +199,15 @@ defmodule Masonree.Manifest do
 
   def validate_version(%__MODULE__{name: name}) do
     [{:bad_version, name}]
+  end
+
+  @spec bad_key_format?(term()) :: boolean()
+  defp bad_key_format?(key) when is_binary(key), do: not Regex.match?(@key, key)
+  defp bad_key_format?(_key), do: false
+
+  @spec report_format([key()], name()) :: problems()
+  defp report_format(keys, name) do
+    for key <- keys, do: {:bad_key_format, name, key}
   end
 
   @spec report_name(boolean(), name()) :: problems()
