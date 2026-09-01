@@ -390,6 +390,45 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_roles/1" do
+    import Manifest, only: [validate_roles: 1]
+
+    test "admits either side of the pair" do
+      manifest = %Manifest{
+        attributes: %{
+          "content" => %Attribute{role: :content, type: :string},
+          "width" => %Attribute{role: :chrome, type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_roles(manifest) == []
+    end
+
+    test "refuses a role outside the pair, misspelled or minted" do
+      manifest = %Manifest{
+        attributes: %{"width" => %Attribute{role: :style, type: :string}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_roles(manifest) ==
+               [{:undeclared_role, "test/example", "width"}]
+    end
+
+    test "refuses an undeclared role, which is a side not chosen" do
+      manifest = %Manifest{
+        attributes: %{"content" => %Attribute{type: :string}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_roles(manifest) ==
+               [{:undeclared_role, "test/example", "content"}]
+    end
+  end
+
   describe "validate_scalars/1" do
     import Manifest, only: [validate_scalars: 1]
 
