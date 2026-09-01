@@ -32,8 +32,216 @@ defmodule Masonree.BlockTest do
                %Masonree.Manifest{name: "test/registering", version: 1}
     end
 
+    test "names every fault in one message, so four cost one compile" do
+      message = ~r"""
+      Masonree.BlockTest.Sprawling declares:
+        - test-sprawling, which is not a namespaced block name
+        - test-sprawling, whose tag attribute has an enum with no values\
+      """
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule Sprawling do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            attributes: %{
+              "tag" => %Attribute{role: :chrome, type: {:enum, []}}
+            },
+            name: "test-sprawling",
+            version: 1
+          }
+        end
+      end
+    end
+
+    test "refuses a block that registers no manifest" do
+      message = ~r"Masonree.BlockTest.Unregistered must register @manifest"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule Unregistered do
+          use Masonree.Block
+        end
+      end
+    end
+
+    test "refuses a manifest the validator rejects, naming the module first" do
+      message =
+        ~r"""
+        Masonree.BlockTest.Misnamed declares Misnamed, which is not a \
+        namespaced block name\
+        """
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule Misnamed do
+          use Masonree.Block
+
+          @manifest %Manifest{name: "Misnamed", version: 1}
+        end
+      end
+    end
+
     test "returns the same term on every call" do
       assert :erts_debug.same(Registering.manifest(), Registering.manifest())
+    end
+
+    test "speaks bad_attribute_type in an author’s words" do
+      message = ~r"whose tag attribute has a type outside the lattice"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule BadAttributeType do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            attributes: %{"tag" => %Attribute{role: :chrome, type: :bool}},
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
+    end
+
+    test "speaks bad_key_format in an author’s words" do
+      message = ~r/whose "tag name" attribute has a key of a refused shape/
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule BadKeyFormat do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            attributes: %{
+              "tag name" => %Attribute{role: :chrome, type: :string}
+            },
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
+    end
+
+    test "speaks bad_version in an author’s words" do
+      message = ~r"whose version is not a positive integer"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule BadVersion do
+          use Masonree.Block
+
+          @manifest %Manifest{name: "test/example", version: 0}
+        end
+      end
+    end
+
+    test "speaks default_outside_enum in an author’s words" do
+      message = ~r"whose tag attribute has a default outside its own values"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule DefaultOutsideEnum do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            attributes: %{
+              "tag" => %Attribute{
+                default: "h9",
+                role: :chrome,
+                type: {:enum, ["h2", "h3"]}
+              }
+            },
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
+    end
+
+    test "speaks default_type_mismatch in an author’s words" do
+      message = ~r"whose rank attribute has a default its type does not admit"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule DefaultTypeMismatch do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            attributes: %{
+              "rank" => %Attribute{default: "2", role: :chrome, type: :number}
+            },
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
+    end
+
+    test "speaks duplicate_enum_values in an author’s words" do
+      message = ~r"whose tag attribute has repeated enum values"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule DuplicateEnumValues do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            attributes: %{
+              "tag" => %Attribute{role: :chrome, type: {:enum, ["h2", "h2"]}}
+            },
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
+    end
+
+    test "speaks non_string_keys in an author’s words" do
+      message = ~r"whose attribute keys are not all strings"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule NonStringKeys do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            attributes: %{content: %Attribute{role: :content, type: :string}},
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
+    end
+
+    test "speaks required_with_default in an author’s words" do
+      message = ~r"whose src attribute has both a default and requiredness"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule RequiredWithDefault do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            attributes: %{
+              "src" => %Attribute{
+                default: "",
+                required: true,
+                role: :content,
+                type: :string
+              }
+            },
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
+    end
+
+    test "speaks undeclared_role in an author’s words" do
+      message =
+        ~r"whose content attribute has no declared role, content or chrome"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule UndeclaredRole do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            attributes: %{"content" => %Attribute{type: :string}},
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
     end
   end
 

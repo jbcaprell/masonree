@@ -6,9 +6,8 @@ defmodule Masonree.Block do
   markup — a render function projecting one of its nodes into that markup.
 
   Only `c:manifest/0` is mandatory. A block that never renders is legal and
-  useful: the manifest alone is what a catalog and a fingerprint will read, and
-  a block whose markup has not been written yet is a block whose contract
-  already holds.
+  useful: the manifest alone answers every question but markup’s, and a block
+  whose markup has not been written yet is a block whose contract already holds.
 
   `c:render/1` receives assigns and returns markup paired with whatever the
   block wants said about its own content. The contract is the map and the pair
@@ -74,18 +73,104 @@ defmodule Masonree.Block do
 
   @optional_callbacks render: 1
 
-  @doc """
-  Defines `c:manifest/0` from the `@manifest` the block registered.
+  @spec admit!(Manifest.problems(), module()) :: :ok
+  defp admit!([], _module), do: :ok
 
-  The struct is built inside a module attribute, so it lives in the module’s
-  literal pool and `c:manifest/0` returns a shared term rather than
-  reconstructing one per call. Nothing here judges the manifest yet: validation
-  joins this hook when there is a validator to run, and until then a block’s
-  manifest is admitted as declared.
+  defp admit!(problems, module) do
+    raise ArgumentError, describe(problems, module)
+  end
+
+  @spec describe(Manifest.problems(), module()) :: String.t()
+  defp describe([problem], module) do
+    "#{inspect(module)} declares #{describe(problem)}"
+  end
+
+  defp describe(problems, module) do
+    faults = Enum.map_join(problems, "\n", &"  - #{describe(&1)}")
+
+    "#{inspect(module)} declares:\n#{faults}"
+  end
+
+  @spec describe(Manifest.problem()) :: String.t()
+  defp describe({:bad_attribute_type, name, key}) do
+    describe(name, key, "a type outside the lattice")
+  end
+
+  defp describe({:bad_key_format, name, key}) do
+    "#{name}, whose #{inspect(key)} attribute has a key of a refused shape"
+  end
+
+  defp describe({:bad_version, name}) do
+    "#{name}, whose version is not a positive integer"
+  end
+
+  defp describe({:default_outside_enum, name, key}) do
+    describe(name, key, "a default outside its own values")
+  end
+
+  defp describe({:default_type_mismatch, name, key}) do
+    describe(name, key, "a default its type does not admit")
+  end
+
+  defp describe({:duplicate_enum_values, name, key}) do
+    describe(name, key, "repeated enum values")
+  end
+
+  defp describe({:empty_enum, name, key}) do
+    describe(name, key, "an enum with no values")
+  end
+
+  defp describe({:non_string_keys, name}) do
+    "#{name}, whose attribute keys are not all strings"
+  end
+
+  defp describe({:required_with_default, name, key}) do
+    describe(name, key, "both a default and requiredness")
+  end
+
+  defp describe({:undeclared_role, name, key}) do
+    describe(name, key, "no declared role, content or chrome")
+  end
+
+  defp describe({:unnamespaced_name, name}) do
+    "#{name}, which is not a namespaced block name"
+  end
+
+  @spec describe(Manifest.name(), Manifest.key(), String.t()) :: String.t()
+  defp describe(name, key, fault) do
+    "#{name}, whose #{key} attribute has #{fault}"
+  end
+
+  @spec validate!(nil | manifest(), module()) :: :ok
+  defp validate!(nil, module) do
+    raise ArgumentError, "#{inspect(module)} must register @manifest"
+  end
+
+  defp validate!(manifest, module) when is_struct(manifest, Manifest) do
+    manifest
+    |> Manifest.validate()
+    |> admit!(module)
+  end
+
+  @doc """
+  Defines `c:manifest/0` from the `@manifest` the block registered, judged.
+
+  The hook validates before it defines: a block that registers no manifest, or
+  one whose manifest `Masonree.Manifest.validate/1` rejects, does not compile.
+  The raise names the module first, because at compile time the module is what
+  the author is looking at, and it names every fault in one message — four
+  faults cost one recompile rather than four.
+
+  `c:manifest/0` answers with the same term on every call — the manifest is a
+  constant of the module, never a reconstruction.
   """
   @doc since: "0.3.0"
   @spec __before_compile__(env()) :: injection()
-  defmacro __before_compile__(_env) do
+  defmacro __before_compile__(env) do
+    env.module
+    |> Module.get_attribute(:manifest)
+    |> validate!(env.module)
+
     quote do
       @impl Masonree.Block
       def manifest(), do: @manifest
