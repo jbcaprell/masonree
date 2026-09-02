@@ -782,6 +782,66 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_templates/1" do
+    import Manifest, only: [validate_templates: 1]
+
+    test "admits templates of the offered shape, at any depth" do
+      manifest = %Manifest{
+        containment: %Containment{
+          templates: [
+            %Template{
+              children: [%Template{label: "Child", type: "test/other"}],
+              label: "Template",
+              type: "test/example"
+            }
+          ]
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_templates(manifest) == []
+    end
+
+    test "judges nothing where no containment is declared" do
+      manifest = %Manifest{name: "test/example", version: 1}
+
+      assert validate_templates(manifest) == []
+    end
+
+    test "refuses a child template whose type is not a string" do
+      manifest = %Manifest{
+        containment: %Containment{
+          templates: [
+            %Template{
+              children: [%Template{label: "Child", type: :example}],
+              label: "Template",
+              type: "test/example"
+            }
+          ]
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_templates(manifest) ==
+               [{:malformed_template, "test/example"}]
+    end
+
+    test "refuses a root template whose type is not a string" do
+      manifest = %Manifest{
+        containment: %Containment{
+          templates: [%Template{label: "Template", type: :example}]
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_templates(manifest) ==
+               [{:malformed_template, "test/example"}]
+    end
+  end
+
   describe "validate_types/1" do
     import Manifest, only: [validate_types: 1]
 

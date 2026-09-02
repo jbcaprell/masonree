@@ -41,6 +41,7 @@ defmodule Masonree.Manifest do
 
   alias Manifest.Attribute
   alias Manifest.Containment
+  alias Manifest.Template
 
   @enforce_keys [:name, :version]
   defstruct attributes: %{},
@@ -625,6 +626,41 @@ defmodule Masonree.Manifest do
   end
 
   @doc """
+  Returns a rejection where the containment offers a template of refused shape.
+
+  A template’s type names the block it will stamp, so it is a string, and so
+  is every child’s beneath it: stamping walks the whole shape, and an entry
+  whose type is anything else can only raise at insertion. The judgment reaches
+  every depth for the same reason the stamp does. Shape is all that is judged
+  here — whether a name is one the rule admits, or one any block declares, is
+  another question. A block with no containment offers no template, and nothing
+  is judged.
+
+  ## Example
+
+      iex> manifest = %Manifest{
+      ...>   containment: %Containment{
+      ...>     templates: [%Template{label: "Plain", type: :paragraph}]
+      ...>   },
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> validate_templates(manifest)
+      [{:malformed_template, "test/example"}]
+
+  """
+  @doc since: "0.6.0"
+  @spec validate_templates(t()) :: problems()
+  def validate_templates(%__MODULE__{containment: nil}), do: []
+
+  def validate_templates(%__MODULE__{} = manifest) do
+    manifest.containment
+    |> malformed_template?()
+    |> report_containment(manifest.name, :malformed_template)
+  end
+
+  @doc """
   Returns a rejection for each attribute whose type the lattice refuses.
 
   The question is `Masonree.Type.declarable?/1`’s, asked attribute by attribute,
@@ -739,6 +775,16 @@ defmodule Masonree.Manifest do
   @spec empty_enum?(Attribute.t()) :: boolean()
   defp empty_enum?(%Attribute{type: {:enum, []}}), do: true
   defp empty_enum?(_attribute), do: false
+
+  @spec malformed_entry?(Template.t()) :: boolean()
+  defp malformed_entry?(%Template{children: children, type: type}) do
+    not is_binary(type) or Enum.any?(children, &malformed_entry?/1)
+  end
+
+  @spec malformed_template?(Containment.t()) :: boolean()
+  defp malformed_template?(%Containment{templates: templates}) do
+    Enum.any?(templates, &malformed_entry?/1)
+  end
 
   @spec non_string_key?(term()) :: boolean()
   defp non_string_key?(key), do: not is_binary(key)
