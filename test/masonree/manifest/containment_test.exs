@@ -35,4 +35,24 @@ defmodule Masonree.Manifest.ContainmentTest do
       assert %Containment{allowed: []}.allowed == []
     end
   end
+
+  describe "admits?/2" do
+    import Containment, only: [admits?: 2]
+
+    test "admits every name where no rule is declared" do
+      assert admits?(%Containment{}, "test/example")
+      assert admits?(%Containment{}, "test/other")
+    end
+
+    test "admits exactly the names a declared rule lists" do
+      containment = %Containment{allowed: ["test/example"]}
+
+      assert admits?(containment, "test/example")
+      refute admits?(containment, "test/other")
+    end
+
+    test "refuses every name where the rule lists none" do
+      refute admits?(%Containment{allowed: []}, "test/example")
+    end
+  end
 end

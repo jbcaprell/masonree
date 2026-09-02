@@ -56,12 +56,45 @@ defmodule Masonree.Manifest.Containment do
 
   defstruct allowed: nil, maximum: nil, minimum: 0, templates: []
 
+  @typedoc "Represents a block name a rule speaks about."
+  @typedoc since: "0.6.0"
+  @type name() :: Manifest.name()
+
   @typedoc "Represents the containment."
   @typedoc since: "0.6.0"
   @type t() :: %__MODULE__{
-          allowed: nil | [Manifest.name()],
+          allowed: nil | [name()],
           maximum: nil | non_neg_integer(),
           minimum: non_neg_integer(),
           templates: [Template.t()]
         }
+
+  @doc """
+  Returns whether `containment` admits a block named `name`.
+
+  The membership half of the rule, honoring the distinction the struct declares:
+  an absent `allowed` admits every name, a declared list admits exactly its
+  members, and an empty list admits none. What a caller does with a refusal is
+  the caller’s — an inserter withholds an offer, a judge reports — and this
+  function only answers.
+
+  ## Examples
+
+      iex> admits?(%Containment{}, "test/example")
+      true
+
+      iex> admits?(%Containment{allowed: ["test/example"]}, "test/example")
+      true
+
+      iex> admits?(%Containment{allowed: []}, "test/example")
+      false
+
+  """
+  @doc since: "0.6.0"
+  @spec admits?(t(), name()) :: boolean()
+  def admits?(%__MODULE__{allowed: nil}, name) when is_binary(name), do: true
+
+  def admits?(%__MODULE__{allowed: allowed}, name) when is_binary(name) do
+    name in allowed
+  end
 end
