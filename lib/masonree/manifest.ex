@@ -559,13 +559,13 @@ defmodule Masonree.Manifest do
     for key <- keys, do: {:bad_key_format, name, key}
   end
 
-  @spec report_name(boolean(), name()) :: problems()
-  defp report_name(false, name), do: [{:unnamespaced_name, name}]
-  defp report_name(true, _name), do: []
-
   @spec report_keys([term()], name()) :: problems()
   defp report_keys([], _name), do: []
   defp report_keys(_keys, name), do: [{:non_string_keys, name}]
+
+  @spec report_name(boolean(), name()) :: problems()
+  defp report_name(false, name), do: [{:unnamespaced_name, name}]
+  defp report_name(true, _name), do: []
 
   @spec required_with_default?(Attribute.t()) :: boolean()
   defp required_with_default?(%Attribute{default: nil}), do: false
