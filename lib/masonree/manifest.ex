@@ -81,6 +81,7 @@ defmodule Masonree.Manifest do
           | {:required_with_default, name(), term()}
           | {:undeclared_role, name(), term()}
           | {:unnamespaced_name, name()}
+          | {:unstartable_interior, name()}
 
   @typedoc "Represents every rejection found."
   @typedoc since: "0.5.0"
@@ -549,6 +550,40 @@ defmodule Masonree.Manifest do
     attributes
     |> take_attributes(&default_type_mismatch?/1)
     |> report_attributes(name, :default_type_mismatch)
+  end
+
+  @doc """
+  Returns a rejection where the block declares an interior no editor can start.
+
+  The question `unstartable?/1` asks, reported: a floor above zero with no
+  template offered is a demand the editor has no way to meet, and a page that no
+  sequence of editor actions can make valid is refused at compile rather than
+  discovered at the first save. Either declaration is fine alone, and the
+  rejection names the block rather than the floor or the template list, because
+  the fix is a choice between the two.
+
+  A block with no containment declares no interior, and nothing is judged.
+
+  ## Example
+
+      iex> manifest = %Manifest{
+      ...>   containment: %Containment{minimum: 1},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> validate_startability(manifest)
+      [{:unstartable_interior, "test/example"}]
+
+  """
+  @doc since: "0.6.0"
+  @spec validate_startability(t()) :: problems()
+  def validate_startability(%__MODULE__{containment: nil}), do: []
+
+  def validate_startability(%__MODULE__{} = manifest) do
+    manifest
+    |> unstartable?()
+    |> report_containment(manifest.name, :unstartable_interior)
   end
 
   @doc """

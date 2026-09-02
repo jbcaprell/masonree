@@ -697,6 +697,40 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_startability/1" do
+    import Manifest, only: [validate_startability: 1]
+
+    test "admits an interior a template starts" do
+      manifest = %Manifest{
+        containment: %Containment{
+          minimum: 1,
+          templates: [%Template{label: "Template", type: "test/example"}]
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_startability(manifest) == []
+    end
+
+    test "judges nothing where no containment is declared" do
+      manifest = %Manifest{name: "test/example", version: 1}
+
+      assert validate_startability(manifest) == []
+    end
+
+    test "refuses the interior no editor can start" do
+      manifest = %Manifest{
+        containment: %Containment{minimum: 1},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_startability(manifest) ==
+               [{:unstartable_interior, "test/example"}]
+    end
+  end
+
   describe "validate_types/1" do
     import Manifest, only: [validate_types: 1]
 
