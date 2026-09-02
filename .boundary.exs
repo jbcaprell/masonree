@@ -7,6 +7,7 @@
     Masonree.Envelope,
     Masonree.Manifest,
     Masonree.Manifest.Attribute,
+    Masonree.Manifest.Containment,
     Masonree.Manifest.Template,
     Masonree.Node,
     Masonree.Projection,
