@@ -100,6 +100,22 @@ defmodule Masonree.BlockTest do
       end
     end
 
+    test "speaks bad_cardinality in an author’s words" do
+      message = ~r"whose containment bounds contradict themselves"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule BadCardinality do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            containment: %Manifest.Containment{maximum: -1},
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
+    end
+
     test "speaks bad_key_format in an author’s words" do
       message = ~r/whose "tag name" attribute has a key of a refused shape/
 
@@ -188,6 +204,24 @@ defmodule Masonree.BlockTest do
       end
     end
 
+    test "speaks malformed_template in an author’s words" do
+      message = ~r"whose containment offers a template of a refused shape"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule MalformedTemplate do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            containment: %Manifest.Containment{
+              templates: [%Manifest.Template{label: "Plain", type: :paragraph}]
+            },
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
+    end
+
     test "speaks non_string_keys in an author’s words" do
       message = ~r"whose attribute keys are not all strings"
 
@@ -227,6 +261,27 @@ defmodule Masonree.BlockTest do
       end
     end
 
+    test "speaks unadmitted_template in an author’s words" do
+      message = ~r"whose containment offers a template its own rule refuses"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule UnadmittedTemplate do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            containment: %Manifest.Containment{
+              allowed: ["test/other"],
+              templates: [
+                %Manifest.Template{label: "Plain", type: "test/example"}
+              ]
+            },
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
+    end
+
     test "speaks undeclared_role in an author’s words" do
       message =
         ~r"whose content attribute has no declared role, content or chrome"
@@ -237,6 +292,38 @@ defmodule Masonree.BlockTest do
 
           @manifest %Manifest{
             attributes: %{"content" => %Attribute{type: :string}},
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
+    end
+
+    test "speaks unfillable_interior in an author’s words" do
+      message = ~r"whose interior demands content and admits none"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule UnfillableInterior do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            containment: %Manifest.Containment{allowed: [], minimum: 1},
+            name: "test/example",
+            version: 1
+          }
+        end
+      end
+    end
+
+    test "speaks unstartable_interior in an author’s words" do
+      message = ~r"whose interior demands content and offers no template"
+
+      assert_raise ArgumentError, message, fn ->
+        defmodule UnstartableInterior do
+          use Masonree.Block
+
+          @manifest %Manifest{
+            containment: %Manifest.Containment{minimum: 1},
             name: "test/example",
             version: 1
           }

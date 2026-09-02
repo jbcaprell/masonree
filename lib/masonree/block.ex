@@ -96,6 +96,10 @@ defmodule Masonree.Block do
     describe(name, key, "a type outside the lattice")
   end
 
+  defp describe({:bad_cardinality, name}) do
+    "#{name}, whose containment bounds contradict themselves"
+  end
+
   defp describe({:bad_key_format, name, key}) do
     "#{name}, whose #{inspect(key)} attribute has a key of a refused shape"
   end
@@ -120,6 +124,10 @@ defmodule Masonree.Block do
     describe(name, key, "an enum with no values")
   end
 
+  defp describe({:malformed_template, name}) do
+    "#{name}, whose containment offers a template of a refused shape"
+  end
+
   defp describe({:non_string_keys, name}) do
     "#{name}, whose attribute keys are not all strings"
   end
@@ -128,12 +136,24 @@ defmodule Masonree.Block do
     describe(name, key, "both a default and requiredness")
   end
 
+  defp describe({:unadmitted_template, name}) do
+    "#{name}, whose containment offers a template its own rule refuses"
+  end
+
   defp describe({:undeclared_role, name, key}) do
     describe(name, key, "no declared role, content or chrome")
   end
 
   defp describe({:unnamespaced_name, name}) do
     "#{name}, which is not a namespaced block name"
+  end
+
+  defp describe({:unfillable_interior, name}) do
+    "#{name}, whose interior demands content and admits none"
+  end
+
+  defp describe({:unstartable_interior, name}) do
+    "#{name}, whose interior demands content and offers no template"
   end
 
   @spec describe(Manifest.name(), Manifest.key(), String.t()) :: String.t()
