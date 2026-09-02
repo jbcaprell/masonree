@@ -70,6 +70,7 @@ defmodule Masonree.Manifest do
   @typedoc since: "0.5.0"
   @type problem() ::
           {:bad_attribute_type, name(), term()}
+          | {:bad_cardinality, name()}
           | {:bad_key_format, name(), key()}
           | {:bad_version, name()}
           | {:default_outside_enum, name(), term()}
@@ -183,6 +184,47 @@ defmodule Masonree.Manifest do
     reports
     |> Enum.concat()
     |> Enum.sort()
+  end
+
+  @doc """
+  Returns the rejection where a containment’s bounds contradict themselves.
+
+  A floor is a count, so it is an integer of at least zero; a ceiling is
+  `nil` — no ceiling at all — or an integer no lower than the floor. A
+  ceiling below the floor describes an interior no page can hold: every
+  count breaches one bound or the other, so the declaration is refused
+  before a page has to discover it. A block with no containment declares no
+  bounds, and nothing is judged.
+
+  ## Examples
+
+      iex> manifest = %Manifest{
+      ...>   containment: %Containment{maximum: 3, minimum: 1},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> validate_cardinality(manifest)
+      []
+
+      iex> manifest = %Manifest{
+      ...>   containment: %Containment{maximum: 1, minimum: 2},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> validate_cardinality(manifest)
+      [{:bad_cardinality, "test/example"}]
+
+  """
+  @doc since: "0.6.0"
+  @spec validate_cardinality(t()) :: problems()
+  def validate_cardinality(%__MODULE__{containment: nil}), do: []
+
+  def validate_cardinality(%__MODULE__{} = manifest) do
+    manifest.containment
+    |> bad_cardinality?()
+    |> report_containment(manifest.name, :bad_cardinality)
   end
 
   @doc """
@@ -541,9 +583,24 @@ defmodule Masonree.Manifest do
     not Type.declarable?(type)
   end
 
+  @spec bad_cardinality?(Containment.t()) :: boolean()
+  defp bad_cardinality?(%Containment{maximum: maximum, minimum: minimum}) do
+    not (bounded_minimum?(minimum) and bounded_maximum?(maximum, minimum))
+  end
+
   @spec bad_key_format?(term()) :: boolean()
   defp bad_key_format?(key) when is_binary(key), do: not Regex.match?(@key, key)
   defp bad_key_format?(_key), do: false
+
+  @spec bounded_maximum?(term(), term()) :: boolean()
+  defp bounded_maximum?(nil, _minimum), do: true
+
+  defp bounded_maximum?(maximum, minimum) do
+    is_integer(maximum) and maximum >= minimum
+  end
+
+  @spec bounded_minimum?(term()) :: boolean()
+  defp bounded_minimum?(minimum), do: is_integer(minimum) and minimum >= 0
 
   @spec default_outside_enum?(Attribute.t()) :: boolean()
   defp default_outside_enum?(%Attribute{default: nil}), do: false
@@ -581,6 +638,10 @@ defmodule Masonree.Manifest do
   defp report_attributes(declarations, name, problem) do
     for {key, _attribute} <- declarations, do: {problem, name, key}
   end
+
+  @spec report_containment(boolean(), name(), atom()) :: problems()
+  defp report_containment(true, name, problem), do: [{problem, name}]
+  defp report_containment(false, _name, _problem), do: []
 
   @spec report_format([key()], name()) :: problems()
   defp report_format(keys, name) do

@@ -166,6 +166,69 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_cardinality/1" do
+    import Manifest, only: [validate_cardinality: 1]
+
+    test "admits a floor with no ceiling" do
+      manifest = %Manifest{
+        containment: %Containment{minimum: 1},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_cardinality(manifest) == []
+    end
+
+    test "admits bounds a page can satisfy" do
+      manifest = %Manifest{
+        containment: %Containment{maximum: 3, minimum: 1},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_cardinality(manifest) == []
+    end
+
+    test "judges nothing where no containment is declared" do
+      manifest = %Manifest{name: "test/example", version: 1}
+
+      assert validate_cardinality(manifest) == []
+    end
+
+    test "refuses a bound that is not an integer" do
+      manifest = %Manifest{
+        containment: %Containment{maximum: "3", minimum: 1.5},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_cardinality(manifest) ==
+               [{:bad_cardinality, "test/example"}]
+    end
+
+    test "refuses a ceiling below the floor" do
+      manifest = %Manifest{
+        containment: %Containment{maximum: 1, minimum: 2},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_cardinality(manifest) ==
+               [{:bad_cardinality, "test/example"}]
+    end
+
+    test "refuses a floor below zero" do
+      manifest = %Manifest{
+        containment: %Containment{minimum: -1},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_cardinality(manifest) ==
+               [{:bad_cardinality, "test/example"}]
+    end
+  end
+
   describe "validate_defaults/1" do
     import Manifest, only: [validate_defaults: 1]
 
