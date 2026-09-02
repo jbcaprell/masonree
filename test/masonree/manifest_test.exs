@@ -409,6 +409,57 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_fillability/1" do
+    import Manifest, only: [validate_fillability: 1]
+
+    test "admits a floor an allowed list can meet" do
+      manifest = %Manifest{
+        containment: %Containment{allowed: ["test/example"], minimum: 1},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_fillability(manifest) == []
+    end
+
+    test "admits a floor under no allowed list at all" do
+      manifest = %Manifest{
+        containment: %Containment{minimum: 1},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_fillability(manifest) == []
+    end
+
+    test "admits an interior sealed on purpose" do
+      manifest = %Manifest{
+        containment: %Containment{allowed: [], minimum: 0},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_fillability(manifest) == []
+    end
+
+    test "judges nothing where no containment is declared" do
+      manifest = %Manifest{name: "test/example", version: 1}
+
+      assert validate_fillability(manifest) == []
+    end
+
+    test "refuses a floor above an interior admitting nothing" do
+      manifest = %Manifest{
+        containment: %Containment{allowed: [], minimum: 1},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_fillability(manifest) ==
+               [{:unfillable_interior, "test/example"}]
+    end
+  end
+
   describe "validate_format/1" do
     import Manifest, only: [validate_format: 1]
 

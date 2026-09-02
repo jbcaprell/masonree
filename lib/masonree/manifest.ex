@@ -80,6 +80,7 @@ defmodule Masonree.Manifest do
           | {:non_string_keys, name()}
           | {:required_with_default, name(), term()}
           | {:undeclared_role, name(), term()}
+          | {:unfillable_interior, name()}
           | {:unnamespaced_name, name()}
           | {:unstartable_interior, name()}
 
@@ -356,6 +357,43 @@ defmodule Masonree.Manifest do
     attributes
     |> take_attributes(&empty_enum?/1)
     |> report_attributes(name, :empty_enum)
+  end
+
+  @doc """
+  Returns a rejection where the block declares an interior nothing may fill.
+
+  An empty `allowed` admits no block, and a floor above zero demands at least
+  one: together they describe an interior that must hold what it may not, a page
+  no editor can save as valid. Either is fine alone — an empty list over a zero
+  floor is an interior sealed on purpose, and a floor may stand under any list
+  that names something. An absent `allowed` is no rule at all rather than an
+  empty one, and admits every block, so it never contradicts a floor.
+
+  An unfillable interior with no template is unstartable as well, and
+  `validate_startability/1` names that on its own, because the two are resolved
+  by different edits. A block with no containment declares no interior, and
+  nothing is judged.
+
+  ## Example
+
+      iex> manifest = %Manifest{
+      ...>   containment: %Containment{allowed: [], minimum: 1},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> validate_fillability(manifest)
+      [{:unfillable_interior, "test/example"}]
+
+  """
+  @doc since: "0.6.0"
+  @spec validate_fillability(t()) :: problems()
+  def validate_fillability(%__MODULE__{containment: nil}), do: []
+
+  def validate_fillability(%__MODULE__{} = manifest) do
+    manifest.containment
+    |> unfillable_interior?()
+    |> report_containment(manifest.name, :unfillable_interior)
   end
 
   @doc """
@@ -746,4 +784,11 @@ defmodule Masonree.Manifest do
   end
 
   defp take_namespace(_parts), do: nil
+
+  @spec unfillable_interior?(Containment.t()) :: boolean()
+  defp unfillable_interior?(%Containment{allowed: [], minimum: minimum}) do
+    minimum > 0
+  end
+
+  defp unfillable_interior?(_containment), do: false
 end
