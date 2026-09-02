@@ -76,7 +76,8 @@ defmodule Masonree.Projection do
   @typedoc "Represents one node that became no markup, or one thing said."
   @typedoc since: "0.3.0"
   @type problem() ::
-          {:reported, Node.id(), Block.report()}
+          {:discarded_interior, Node.id()}
+          | {:reported, Node.id(), Block.report()}
           | {:unknown_block, Node.id()}
           | {:unrenderable_block, Node.id()}
 
@@ -98,6 +99,13 @@ defmodule Masonree.Projection do
   The walk. Children render before their parent and reach it as a slot, so a
   container composes an interior it never had to go looking for; siblings render
   in document order and their problems accumulate in that order too.
+
+  Only a container is handed an interior. Where a node holds children but its
+  block declares no containment, the children are discarded and reported as
+  `{:discarded_interior, id}` — a block with no rule about an interior has no
+  slot that places one, and content swallowed by markup that never renders it
+  would otherwise vanish without a word. A childless node discards nothing,
+  whatever its block declares.
 
   A block’s own findings ride as `{:reported, id, term}` — the library fixes no
   taxonomy for them, because a taxonomy with no members is an invitation to
@@ -171,7 +179,7 @@ defmodule Masonree.Projection do
 
   @spec project(Node.t(), module(), blocks(), mode()) :: projection()
   defp project(node, module, blocks, mode) do
-    {interior, nested} = take_interior(node, blocks, mode)
+    {interior, nested} = take_interior(node, module, blocks, mode)
     assigns = fill(node, interior, mode, module.manifest())
     {rendered, reports} = module.render(assigns)
 
@@ -219,9 +227,16 @@ defmodule Masonree.Projection do
     take_annotation(node, manifest)
   end
 
-  @spec take_interior(Node.t(), blocks(), mode()) :: projection()
-  defp take_interior(node, blocks, mode) do
-    render_list(node.children, blocks, mode)
+  @spec take_interior(Node.t(), module(), blocks(), mode()) :: projection()
+  defp take_interior(%Node{children: []}, _module, _blocks, _mode), do: {[], []}
+
+  defp take_interior(node, module, blocks, mode) do
+    manifest = module.manifest()
+
+    case manifest.containment do
+      nil -> {[], [{:discarded_interior, node.id}]}
+      _containment -> render_list(node.children, blocks, mode)
+    end
   end
 
   @spec take_local_name(Manifest.name()) :: String.t()

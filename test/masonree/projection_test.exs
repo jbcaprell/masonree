@@ -109,10 +109,28 @@ defmodule Masonree.ProjectionTest do
       document = %Document{
         root: [
           %Node{
-            attributes: %{"content" => "Hello, world!"},
             children: [
               %Node{id: "n_tBhgl2qwXA7K", type: "test/gone", version: 1}
             ],
+            id: "n_ZazV3ZSV4fVV",
+            type: "test/wrapping",
+            version: 1
+          }
+        ]
+      }
+
+      {rendered, problems} = render(document, @blocks, :public)
+
+      assert to_markup(rendered) == ~S(<div data-mnr="wrapping"></div>)
+      assert problems == [{:unknown_block, "n_tBhgl2qwXA7K"}]
+    end
+
+    test "discards the interior of a block that declares none" do
+      document = %Document{
+        root: [
+          %Node{
+            attributes: %{"content" => "Hello, world!"},
+            children: [build_paragraph("n_NX3_-SiYDOeK", "Goodbye, world!")],
             id: "n_ZazV3ZSV4fVV",
             type: "core/paragraph",
             version: 1
@@ -125,7 +143,7 @@ defmodule Masonree.ProjectionTest do
       assert to_markup(rendered) ==
                ~S(<p data-mnr="paragraph">Hello, world!</p>)
 
-      assert problems == [{:unknown_block, "n_tBhgl2qwXA7K"}]
+      assert problems == [{:discarded_interior, "n_ZazV3ZSV4fVV"}]
     end
 
     test "drops an unknown block and its interior, and reports it" do
@@ -300,7 +318,11 @@ defmodule Masonree.ProjectionTest do
   defmodule Wrapping do
     use Masonree.Block
 
-    @manifest %Manifest{name: "test/wrapping", version: 1}
+    @manifest %Manifest{
+      containment: %Manifest.Containment{},
+      name: "test/wrapping",
+      version: 1
+    }
 
     @impl Masonree.Block
     def render(assigns) do
