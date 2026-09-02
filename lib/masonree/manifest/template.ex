@@ -47,11 +47,20 @@ defmodule Masonree.Manifest.Template do
   alias Masonree
 
   alias Masonree.Manifest
+  alias Masonree.Node
 
   alias Manifest.Attribute
 
   @enforce_keys [:label, :type]
   defstruct attributes: %{}, children: [], label: nil, type: nil
+
+  @typedoc "Represents one stamped node."
+  @typedoc since: "0.6.0"
+  @type block_node() :: Node.t()
+
+  @typedoc "Represents the manifests stamping consults, by block name."
+  @typedoc since: "0.6.0"
+  @type manifests() :: %{type() => Manifest.t()}
 
   @typedoc "Represents the template."
   @typedoc since: "0.6.0"
@@ -59,6 +68,51 @@ defmodule Masonree.Manifest.Template do
           attributes: %{Manifest.key() => Attribute.value()},
           children: [t()],
           label: String.t(),
-          type: Manifest.name()
+          type: type()
         }
+
+  @typedoc "Represents the block type an entry stamps."
+  @typedoc since: "0.6.0"
+  @type type() :: Manifest.name()
+
+  @doc """
+  Returns a fresh node stamped from `template`.
+
+  Every entry passes through `Masonree.Node.new/3` against its own manifest, so
+  declared defaults are applied, the version is the manifest’s, and every id is
+  minted new at every stamping — a template stamped twice yields two trees
+  sharing nothing but their shape.
+
+  An entry whose type `manifests` does not name raises `KeyError`. That is the
+  one place this module refuses rather than reports: a template naming an absent
+  block is authored junk in a compiled module, not stored content to tolerate,
+  and the tolerant posture the read boundary keeps is about pages that outlived
+  their blocks.
+
+  ## Example
+
+      iex> manifests = %{
+      ...>   "test/example" => %Manifest{name: "test/example", version: 1}
+      ...> }
+      iex>
+      iex> template = %Template{
+      ...>   children: [%Template{label: "Child", type: "test/example"}],
+      ...>   label: "Template",
+      ...>   type: "test/example"
+      ...> }
+      iex>
+      iex> node = stamp(template, manifests)
+      iex> {node.type, node.version, length(node.children)}
+      {"test/example", 1, 1}
+
+  """
+  @doc since: "0.6.0"
+  @spec stamp(t(), manifests()) :: block_node()
+  def stamp(template, manifests)
+      when is_struct(template, __MODULE__) and is_map(manifests) do
+    manifest = Map.fetch!(manifests, template.type)
+    children = Enum.map(template.children, &stamp(&1, manifests))
+
+    Node.new(manifest, template.attributes, children)
+  end
 end

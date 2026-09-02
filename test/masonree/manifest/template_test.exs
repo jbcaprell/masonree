@@ -8,6 +8,7 @@ defmodule Masonree.Manifest.TemplateTest do
 
   alias Masonree.Manifest
 
+  alias Manifest.Attribute
   alias Manifest.Template
 
   doctest Template, import: true
@@ -41,6 +42,72 @@ defmodule Masonree.Manifest.TemplateTest do
                label: "Template",
                type: "test/example"
              }
+    end
+  end
+
+  describe "stamp/2" do
+    import Template, only: [stamp: 2]
+
+    test "applies the declared defaults each entry leaves absent" do
+      template = %Template{label: "Template", type: "test/example"}
+
+      manifests = %{
+        "test/example" => %Manifest{
+          attributes: %{
+            "content" => %Attribute{default: "", role: :content, type: :string}
+          },
+          name: "test/example",
+          version: 1
+        }
+      }
+
+      node = stamp(template, manifests)
+
+      assert node.attributes == %{"content" => ""}
+    end
+
+    test "mints fresh ids at every stamping" do
+      manifests = %{
+        "test/example" => %Manifest{name: "test/example", version: 1}
+      }
+
+      template = %Template{label: "Template", type: "test/example"}
+
+      refute stamp(template, manifests).id == stamp(template, manifests).id
+    end
+
+    test "raises on a type the manifests do not name" do
+      template = %Template{label: "Template", type: "test/absent"}
+
+      assert_raise KeyError, fn -> stamp(template, %{}) end
+    end
+
+    test "stamps the interior whole, in the order the template gives" do
+      manifests = %{
+        "test/example" => %Manifest{name: "test/example", version: 1}
+      }
+
+      template = %Template{
+        children: [
+          %Template{
+            attributes: %{"content" => "First"},
+            label: "First",
+            type: "test/example"
+          },
+          %Template{
+            attributes: %{"content" => "Second"},
+            label: "Second",
+            type: "test/example"
+          }
+        ],
+        label: "Template",
+        type: "test/example"
+      }
+
+      node = stamp(template, manifests)
+
+      assert Enum.map(node.children, & &1.attributes["content"]) ==
+               ["First", "Second"]
     end
   end
 end
