@@ -192,6 +192,7 @@ defmodule Masonree.Block do
       %Masonree.Manifest{
         attributes: %{},
         category: nil,
+        containment: nil,
         label: nil,
         name: "test/example",
         version: 1

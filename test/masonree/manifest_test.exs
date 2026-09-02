@@ -9,10 +9,23 @@ defmodule Masonree.ManifestTest do
   alias Masonree.Manifest
 
   alias Manifest.Attribute
+  alias Manifest.Containment
 
   doctest Manifest, import: true
 
   describe "%Manifest{}" do
+    test "carries a containment where the block declares one" do
+      containment = %Containment{minimum: 1}
+
+      manifest = %Manifest{
+        containment: containment,
+        name: "test/example",
+        version: 1
+      }
+
+      assert manifest.containment == containment
+    end
+
     test "carries a declared attribute" do
       attribute = %Attribute{default: "", type: :string}
 
@@ -25,10 +38,11 @@ defmodule Masonree.ManifestTest do
       assert manifest.attributes["content"] == attribute
     end
 
-    test "defaults to no attributes, category or label" do
+    test "defaults to no attributes, category, containment or label" do
       assert Map.from_struct(%Manifest{name: "test/example", version: 1}) == %{
                attributes: %{},
                category: nil,
+               containment: nil,
                label: nil,
                name: "test/example",
                version: 1
