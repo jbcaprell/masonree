@@ -6,7 +6,10 @@ defmodule Masonree.NodeTest do
 
   alias Masonree
 
+  alias Masonree.Manifest
   alias Masonree.Node
+
+  alias Manifest.Attribute
 
   doctest Node, import: true
 
@@ -245,6 +248,71 @@ defmodule Masonree.NodeTest do
       ids = for _sample <- 1..100, do: generate_id()
 
       assert Enum.all?(ids, &(&1 =~ ~r"^n_[A-Za-z0-9_-]{12}$"))
+    end
+  end
+
+  describe "new/3" do
+    import Node, only: [new: 3]
+
+    test "carries the children it is given" do
+      manifest = %Manifest{name: "test/example", version: 1}
+      child = new(manifest, %{}, [])
+
+      assert new(manifest, %{}, [child]).children == [child]
+    end
+
+    test "fills every declared default the caller left absent" do
+      manifest = %Manifest{
+        attributes: %{
+          "content" => %Attribute{default: "", role: :content, type: :string},
+          "tag" => %Attribute{
+            default: "h2",
+            role: :chrome,
+            type: {:enum, ["h2", "h3"]}
+          }
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert new(manifest, %{}, []).attributes ==
+               %{"content" => "", "tag" => "h2"}
+    end
+
+    test "leaves a nil default unwritten, absence being the default" do
+      manifest = %Manifest{
+        attributes: %{"content" => %Attribute{role: :content, type: :string}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert new(manifest, %{}, []).attributes == %{}
+    end
+
+    test "mints a fresh id at every call" do
+      manifest = %Manifest{name: "test/example", version: 1}
+
+      refute new(manifest, %{}, []).id == new(manifest, %{}, []).id
+    end
+
+    test "never overwrites a value the caller supplied" do
+      manifest = %Manifest{
+        attributes: %{
+          "content" => %Attribute{default: "", role: :content, type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      attributes = %{"content" => "Hello, world!"}
+
+      assert new(manifest, attributes, []).attributes == attributes
+    end
+
+    test "stamps type and version from the manifest, never from the caller" do
+      node = new(%Manifest{name: "test/example", version: 7}, %{}, [])
+
+      assert {node.type, node.version} == {"test/example", 7}
     end
   end
 

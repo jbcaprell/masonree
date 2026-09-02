@@ -49,9 +49,21 @@ defmodule Masonree.Node do
             type: nil,
             version: nil
 
+  @typedoc "Represents the values a node holds, keyed by attribute."
+  @typedoc since: "0.6.0"
+  @type attributes() :: %{Manifest.key() => Attribute.value()}
+
+  @typedoc "Represents the nodes beneath this one, in document order."
+  @typedoc since: "0.6.0"
+  @type children() :: [t()]
+
   @typedoc "Represents the node’s identity, stable across every edit."
   @typedoc since: "0.3.0"
   @type id() :: String.t()
+
+  @typedoc "Represents the declaration a node is built against."
+  @typedoc since: "0.6.0"
+  @type manifest() :: Manifest.t()
 
   @typedoc "Represents a node read, or an envelope that is not one."
   @typedoc since: "0.3.0"
@@ -64,13 +76,15 @@ defmodule Masonree.Node do
   @typedoc "Represents the node."
   @typedoc since: "0.3.0"
   @type t() :: %__MODULE__{
-          attributes: %{Manifest.key() => Attribute.value()},
-          children: [t()],
+          attributes: attributes(),
+          children: children(),
           id: id(),
           preset: nil | String.t(),
           type: Manifest.name(),
           version: Manifest.version()
         }
+
+  @typep declaration() :: {Manifest.key(), Attribute.t()}
 
   @doc """
   Returns `{:ok, node}` where `serialized` is a node envelope, or `:error`.
@@ -192,6 +206,53 @@ defmodule Masonree.Node do
   end
 
   @doc """
+  Returns a node of `manifest`, holding `attributes` and `children`.
+
+  Every attribute the manifest declares with a default takes it, unless
+  `attributes` already carries a value for that key — a caller’s value is never
+  overwritten, because a default is what a node holds in the absence of a
+  decision and supplying one is a decision. A `nil` default is not a default and
+  is not written.
+
+  `type` and `version` are stamped from the manifest rather than accepted,
+  because a node claiming a version its block never had is a migration nothing
+  can reason about. `preset` is left `nil`: choosing a preset is not
+  construction’s work.
+
+  ## Example
+
+      iex> manifest = %Manifest{
+      ...>   attributes: %{
+      ...>     "content" => %Attribute{
+      ...>       default: "",
+      ...>       role: :content,
+      ...>       type: :string
+      ...>     }
+      ...>   },
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> node = new(manifest, %{}, [])
+      iex> {node.attributes, node.type, node.version}
+      {%{"content" => ""}, "test/example", 1}
+
+  """
+  @doc since: "0.6.0"
+  @spec new(manifest(), attributes(), children()) :: t()
+  def new(manifest, attributes, children)
+      when is_struct(manifest, Manifest) and is_map(attributes) and
+             is_list(children) do
+    %__MODULE__{
+      attributes: apply_defaults(attributes, manifest.attributes),
+      children: children,
+      id: generate_id(),
+      type: manifest.name,
+      version: manifest.version
+    }
+  end
+
+  @doc """
   Returns `node` as a plain map, with string keys, recursively.
 
   This is the shape that persists. Keys are strings rather than atoms because
@@ -233,14 +294,19 @@ defmodule Masonree.Node do
     }
   end
 
-  @spec get_attributes(serialized()) :: %{Manifest.key() => Attribute.value()}
+  @spec apply_defaults(attributes(), Manifest.attributes()) :: attributes()
+  defp apply_defaults(attributes, declarations) do
+    Enum.reduce(declarations, attributes, &put_default/2)
+  end
+
+  @spec get_attributes(serialized()) :: attributes()
   defp get_attributes(%{"attributes" => attributes}) when is_map(attributes) do
     attributes
   end
 
   defp get_attributes(_serialized), do: %{}
 
-  @spec get_children(serialized()) :: [t()]
+  @spec get_children(serialized()) :: children()
   defp get_children(serialized) do
     serialized
     |> take_children()
@@ -262,6 +328,13 @@ defmodule Masonree.Node do
   end
 
   defp get_version(_serialized), do: 1
+
+  @spec put_default(declaration(), attributes()) :: attributes()
+  defp put_default({_key, %Attribute{default: nil}}, attributes), do: attributes
+
+  defp put_default({key, %Attribute{default: default}}, attributes) do
+    Map.put_new(attributes, key, default)
+  end
 
   @spec readable?(term()) :: boolean()
   defp readable?(%{"type" => type} = serialized) when is_binary(type) do
