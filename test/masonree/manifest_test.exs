@@ -208,6 +208,74 @@ defmodule Masonree.ManifestTest do
     end
   end
 
+  describe "validate_admission/1" do
+    import Manifest, only: [validate_admission: 1]
+
+    test "admits a root template the allowed list names" do
+      manifest = %Manifest{
+        containment: %Containment{
+          allowed: ["test/example"],
+          templates: [%Template{label: "Template", type: "test/example"}]
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_admission(manifest) == []
+    end
+
+    test "admits every template under no allowed list at all" do
+      manifest = %Manifest{
+        containment: %Containment{
+          templates: [%Template{label: "Template", type: "test/example"}]
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_admission(manifest) == []
+    end
+
+    test "judges nothing where no containment is declared" do
+      manifest = %Manifest{name: "test/example", version: 1}
+
+      assert validate_admission(manifest) == []
+    end
+
+    test "refuses a root template the allowed list does not name" do
+      manifest = %Manifest{
+        containment: %Containment{
+          allowed: ["test/other"],
+          templates: [%Template{label: "Template", type: "test/example"}]
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_admission(manifest) ==
+               [{:unadmitted_template, "test/example"}]
+    end
+
+    test "tolerates a child the allowed list does not name" do
+      manifest = %Manifest{
+        containment: %Containment{
+          allowed: ["test/example"],
+          templates: [
+            %Template{
+              children: [%Template{label: "Child", type: "test/other"}],
+              label: "Template",
+              type: "test/example"
+            }
+          ]
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_admission(manifest) == []
+    end
+  end
+
   describe "validate_cardinality/1" do
     import Manifest, only: [validate_cardinality: 1]
 

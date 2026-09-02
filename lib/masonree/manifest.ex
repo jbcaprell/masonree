@@ -80,6 +80,7 @@ defmodule Masonree.Manifest do
           | {:empty_enum, name(), term()}
           | {:non_string_keys, name()}
           | {:required_with_default, name(), term()}
+          | {:unadmitted_template, name()}
           | {:undeclared_role, name(), term()}
           | {:unfillable_interior, name()}
           | {:unnamespaced_name, name()}
@@ -223,6 +224,47 @@ defmodule Masonree.Manifest do
     reports
     |> Enum.concat()
     |> Enum.sort()
+  end
+
+  @doc """
+  Returns a rejection where the containment offers a template its rule refuses.
+
+  A root template is the block the interior will hold, so its type is a name the
+  `allowed` list must admit: a template outside the list is a starting shape the
+  containment itself would refuse at insertion, and the contradiction is refused
+  first. An absent `allowed` admits every name and refuses no template.
+
+  Deeper entries are judged for shape only, never for admission. What a child
+  block admits is that block’s own declaration, and reading it takes a registry
+  of blocks this module does not hold — like a name’s uniqueness, it belongs to
+  whatever holds the blocks. Membership is asked of the list directly rather
+  than through `Containment.admits?/2`, whose guard refuses the non-string type
+  that `validate_templates/1` reports on its own. A block with no containment
+  offers no template, and nothing is judged.
+
+  ## Example
+
+      iex> manifest = %Manifest{
+      ...>   containment: %Containment{
+      ...>     allowed: ["test/other"],
+      ...>     templates: [%Template{label: "Plain", type: "test/example"}]
+      ...>   },
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> validate_admission(manifest)
+      [{:unadmitted_template, "test/example"}]
+
+  """
+  @doc since: "0.6.0"
+  @spec validate_admission(t()) :: problems()
+  def validate_admission(%__MODULE__{containment: nil}), do: []
+
+  def validate_admission(%__MODULE__{} = manifest) do
+    manifest.containment
+    |> unadmitted_template?()
+    |> report_containment(manifest.name, :unadmitted_template)
   end
 
   @doc """
@@ -830,6 +872,13 @@ defmodule Masonree.Manifest do
   end
 
   defp take_namespace(_parts), do: nil
+
+  @spec unadmitted_template?(Containment.t()) :: boolean()
+  defp unadmitted_template?(%Containment{allowed: nil}), do: false
+
+  defp unadmitted_template?(%Containment{allowed: allowed} = containment) do
+    Enum.any?(containment.templates, &(&1.type not in allowed))
+  end
 
   @spec unfillable_interior?(Containment.t()) :: boolean()
   defp unfillable_interior?(%Containment{allowed: [], minimum: minimum}) do
