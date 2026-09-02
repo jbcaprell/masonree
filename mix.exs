@@ -78,7 +78,7 @@ defmodule Masonree.MixProject do
       name: "Masonree",
       start_permanent: env == :prod,
       test_coverage: [ignore_modules: [~r/\AMasonreeBench(\.|\z)/]],
-      version: "0.5.2"
+      version: "0.6.0"
     ]
   end
 
