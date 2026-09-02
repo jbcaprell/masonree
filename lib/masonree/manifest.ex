@@ -137,6 +137,42 @@ defmodule Masonree.Manifest do
   end
 
   @doc """
+  Returns whether the block declares an interior no editor can start.
+
+  A containment with a floor above zero requires the interior to hold
+  something from the first save, and templates are the only way an editor puts
+  something there without authoring it — so a floor with no template is a demand
+  with no way to meet it. The two declarations are each fine alone: a zero floor
+  needs no template, and a template list may sit beside any floor. Only the pair
+  is refused.
+
+  A block with no containment declares no interior at all, and a block with no
+  interior cannot be unstartable.
+
+  ## Examples
+
+      iex> manifest = %Manifest{
+      ...>   containment: %Containment{minimum: 1},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> unstartable?(manifest)
+      true
+
+      iex> unstartable?(%Manifest{name: "test/example", version: 1})
+      false
+
+  """
+  @doc since: "0.6.0"
+  @spec unstartable?(t()) :: boolean()
+  def unstartable?(%__MODULE__{containment: nil}), do: false
+
+  def unstartable?(%__MODULE__{containment: containment}) do
+    containment.minimum > 0 and containment.templates == []
+  end
+
+  @doc """
   Returns every rejection `manifest` carries, sorted, or `[]` where well formed.
 
   Every check runs and every fault is reported: a manifest with four faults

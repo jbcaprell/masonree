@@ -10,6 +10,7 @@ defmodule Masonree.ManifestTest do
 
   alias Manifest.Attribute
   alias Manifest.Containment
+  alias Manifest.Template
 
   doctest Manifest, import: true
 
@@ -74,6 +75,47 @@ defmodule Masonree.ManifestTest do
 
     test "takes the owning half of a namespaced name" do
       assert get_namespace("core/paragraph") == "core"
+    end
+  end
+
+  describe "unstartable?/1" do
+    import Manifest, only: [unstartable?: 1]
+
+    test "answers false where a template is offered" do
+      manifest = %Manifest{
+        containment: %Containment{
+          minimum: 1,
+          templates: [%Template{label: "Template", type: "test/example"}]
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      refute unstartable?(manifest)
+    end
+
+    test "answers false where no containment is declared" do
+      refute unstartable?(%Manifest{name: "test/example", version: 1})
+    end
+
+    test "answers false where the floor is zero" do
+      manifest = %Manifest{
+        containment: %Containment{minimum: 0},
+        name: "test/example",
+        version: 1
+      }
+
+      refute unstartable?(manifest)
+    end
+
+    test "answers true where a floor stands and no template is offered" do
+      manifest = %Manifest{
+        containment: %Containment{minimum: 2},
+        name: "test/example",
+        version: 1
+      }
+
+      assert unstartable?(manifest)
     end
   end
 
