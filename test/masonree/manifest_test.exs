@@ -152,6 +152,20 @@ defmodule Masonree.ManifestTest do
              ]
     end
 
+    test "reports every containment fault beside the rest" do
+      manifest = %Manifest{
+        containment: %Containment{allowed: [], maximum: 0, minimum: 1},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate(manifest) == [
+               {:bad_cardinality, "test/example"},
+               {:unfillable_interior, "test/example"},
+               {:unstartable_interior, "test/example"}
+             ]
+    end
+
     test "reports every fault in one pass, not the first it meets" do
       manifest = %Manifest{
         attributes: %{
