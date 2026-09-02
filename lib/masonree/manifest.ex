@@ -188,13 +188,15 @@ defmodule Masonree.Manifest do
 
   ## Example
 
-      iex> validate_defaults(%Manifest{
+      iex> manifest = %Manifest{
       ...>   attributes: %{
       ...>     "tag" => %Attribute{default: "h9", type: {:enum, ["h2", "h3"]}}
       ...>   },
       ...>   name: "test/example",
       ...>   version: 1
-      ...> })
+      ...> }
+      iex>
+      iex> validate_defaults(manifest)
       [{:default_outside_enum, "test/example", "tag"}]
 
   """
@@ -218,11 +220,13 @@ defmodule Masonree.Manifest do
 
   ## Example
 
-      iex> validate_duplicates(%Manifest{
+      iex> manifest = %Manifest{
       ...>   attributes: %{"tag" => %Attribute{type: {:enum, ["h2", "h2"]}}},
       ...>   name: "test/example",
       ...>   version: 1
-      ...> })
+      ...> }
+      iex>
+      iex> validate_duplicates(manifest)
       [{:duplicate_enum_values, "test/example", "tag"}]
 
   """
@@ -247,11 +251,13 @@ defmodule Masonree.Manifest do
 
   ## Example
 
-      iex> validate_enums(%Manifest{
+      iex> manifest = %Manifest{
       ...>   attributes: %{"tag" => %Attribute{type: {:enum, []}}},
       ...>   name: "test/example",
       ...>   version: 1
-      ...> })
+      ...> }
+      iex>
+      iex> validate_enums(manifest)
       [{:empty_enum, "test/example", "tag"}]
 
   """
@@ -280,11 +286,13 @@ defmodule Masonree.Manifest do
 
   ## Example
 
-      iex> validate_format(%Manifest{
+      iex> manifest = %Manifest{
       ...>   attributes: %{"tag name" => %Attribute{type: :string}},
       ...>   name: "test/example",
       ...>   version: 1
-      ...> })
+      ...> }
+      iex>
+      iex> validate_format(manifest)
       [{:bad_key_format, "test/example", "tag name"}]
 
   """
@@ -309,11 +317,13 @@ defmodule Masonree.Manifest do
 
   ## Example
 
-      iex> validate_keys(%Manifest{
+      iex> manifest = %Manifest{
       ...>   attributes: %{content: %Attribute{type: :string}},
       ...>   name: "test/example",
       ...>   version: 1
-      ...> })
+      ...> }
+      iex>
+      iex> validate_keys(manifest)
       [{:non_string_keys, "test/example"}]
 
   """
@@ -370,13 +380,15 @@ defmodule Masonree.Manifest do
 
   ## Example
 
-      iex> validate_requiredness(%Manifest{
+      iex> manifest = %Manifest{
       ...>   attributes: %{
       ...>     "src" => %Attribute{default: "", required: true, type: :string}
       ...>   },
       ...>   name: "test/example",
       ...>   version: 1
-      ...> })
+      ...> }
+      iex>
+      iex> validate_requiredness(manifest)
       [{:required_with_default, "test/example", "src"}]
 
   """
@@ -402,11 +414,13 @@ defmodule Masonree.Manifest do
 
   ## Example
 
-      iex> validate_roles(%Manifest{
+      iex> manifest = %Manifest{
       ...>   attributes: %{"content" => %Attribute{type: :string}},
       ...>   name: "test/example",
       ...>   version: 1
-      ...> })
+      ...> }
+      iex>
+      iex> validate_roles(manifest)
       [{:undeclared_role, "test/example", "content"}]
 
   """
@@ -431,11 +445,13 @@ defmodule Masonree.Manifest do
 
   ## Example
 
-      iex> validate_scalars(%Manifest{
+      iex> manifest = %Manifest{
       ...>   attributes: %{"rank" => %Attribute{default: "2", type: :number}},
       ...>   name: "test/example",
       ...>   version: 1
-      ...> })
+      ...> }
+      iex>
+      iex> validate_scalars(manifest)
       [{:default_type_mismatch, "test/example", "rank"}]
 
   """
@@ -463,11 +479,13 @@ defmodule Masonree.Manifest do
 
   ## Example
 
-      iex> validate_types(%Manifest{
+      iex> manifest = %Manifest{
       ...>   attributes: %{"tag" => %Attribute{type: :bool}},
       ...>   name: "test/example",
       ...>   version: 1
-      ...> })
+      ...> }
+      iex>
+      iex> validate_types(manifest)
       [{:bad_attribute_type, "test/example", "tag"}]
 
   """
