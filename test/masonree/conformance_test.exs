@@ -7,6 +7,7 @@ defmodule Masonree.ConformanceTest do
   alias Masonree
 
   alias Masonree.Conformance
+  alias Masonree.Document
   alias Masonree.Manifest
   alias Masonree.Node
 
@@ -14,6 +15,271 @@ defmodule Masonree.ConformanceTest do
   alias Manifest.Containment
 
   doctest Conformance, import: true
+
+  describe "validate/2" do
+    import Conformance, only: [validate: 2]
+
+    test "finds a problem at depth exactly as at the root" do
+      document = %Document{
+        root: [
+          %Node{
+            children: [
+              %Node{
+                children: [
+                  %Node{id: "n_x9y2vGeqrb-J", type: "test/rogue", version: 1}
+                ],
+                id: "n_o3qL6MOd0Vjq",
+                type: "test/example",
+                version: 1
+              },
+              %Node{id: "n_V6BiFB09kmO4", type: "test/example", version: 1}
+            ],
+            id: "n_kn9M2iVCbYUO",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{name: "test/example", version: 1}
+      }
+
+      assert validate(document, manifests) ==
+               [{:unknown_block, "n_x9y2vGeqrb-J"}]
+    end
+
+    test "keeps document order across depths" do
+      document = %Document{
+        root: [
+          %Node{
+            children: [
+              %Node{
+                attributes: %{"content" => "Hello, world!"},
+                id: "n_o3qL6MOd0Vjq",
+                type: "test/example",
+                version: 1
+              }
+            ],
+            id: "n_kn9M2iVCbYUO",
+            type: "test/example",
+            version: 1
+          },
+          %Node{id: "n_V6BiFB09kmO4", type: "test/rogue", version: 1}
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{name: "test/example", version: 1}
+      }
+
+      assert validate(document, manifests) == [
+               {:unknown_attribute, "n_o3qL6MOd0Vjq", "content"},
+               {:unknown_block, "n_V6BiFB09kmO4"}
+             ]
+    end
+
+    test "reports a conforming page clean" do
+      document = %Document{
+        root: [
+          %Node{
+            children: [
+              %Node{
+                attributes: %{"content" => "Hello, world!"},
+                id: "n_o3qL6MOd0Vjq",
+                type: "test/example",
+                version: 1
+              }
+            ],
+            id: "n_kn9M2iVCbYUO",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{
+          attributes: %{"content" => %Attribute{role: :content, type: :string}},
+          containment: %Containment{},
+          name: "test/example",
+          version: 1
+        }
+      }
+
+      assert validate(document, manifests) == []
+    end
+
+    test "reports an empty document clean" do
+      assert validate(%Document{}, %{}) == []
+    end
+
+    test "reports an unknown block alone, attributes unjudged" do
+      document = %Document{
+        root: [
+          %Node{
+            attributes: %{123 => :junk, "level" => "not-even-wrong"},
+            id: "n_pRWK-vNzXQjm",
+            type: "test/rogue",
+            version: 1
+          }
+        ]
+      }
+
+      assert validate(document, %{}) == [{:unknown_block, "n_pRWK-vNzXQjm"}]
+    end
+
+    test "reports an unknown block at depth once, not a cascade" do
+      document = %Document{
+        root: [
+          %Node{
+            children: [
+              %Node{
+                children: [
+                  %Node{
+                    attributes: %{"junk" => true},
+                    id: "n_x9y2vGeqrb-J",
+                    type: "test/rogue",
+                    version: 1
+                  }
+                ],
+                id: "n_o3qL6MOd0Vjq",
+                type: "test/example",
+                version: 1
+              }
+            ],
+            id: "n_kn9M2iVCbYUO",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{name: "test/example", version: 1}
+      }
+
+      assert validate(document, manifests) ==
+               [{:unknown_block, "n_x9y2vGeqrb-J"}]
+    end
+
+    test "reports every attribute fault, sorted" do
+      document = %Document{
+        root: [
+          %Node{
+            attributes: %{"content" => "Hello, world!", "rank" => "2"},
+            id: "n_pRWK-vNzXQjm",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{
+          attributes: %{
+            "rank" => %Attribute{role: :chrome, type: :number},
+            "src" => %Attribute{required: true, role: :content, type: :string}
+          },
+          name: "test/example",
+          version: 1
+        }
+      }
+
+      assert validate(document, manifests) == [
+               {:bad_attribute_value, "n_pRWK-vNzXQjm", "rank"},
+               {:missing_attribute, "n_pRWK-vNzXQjm", "src"},
+               {:unknown_attribute, "n_pRWK-vNzXQjm", "content"}
+             ]
+    end
+
+    test "reports the interior beside the attributes, count first" do
+      document = %Document{
+        root: [
+          %Node{
+            children: [
+              %Node{id: "n_Mk3PjLYVpuGI", type: "test/plain", version: 1}
+            ],
+            id: "n_pRWK-vNzXQjm",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{
+          attributes: %{
+            "src" => %Attribute{required: true, role: :content, type: :string}
+          },
+          containment: %Containment{allowed: ["test/example"], minimum: 2},
+          name: "test/example",
+          version: 1
+        },
+        "test/plain" => %Manifest{name: "test/plain", version: 1}
+      }
+
+      assert validate(document, manifests) == [
+               {:too_few_children, "n_pRWK-vNzXQjm"},
+               {:missing_attribute, "n_pRWK-vNzXQjm", "src"},
+               {:refused_child, "n_pRWK-vNzXQjm", "n_Mk3PjLYVpuGI"}
+             ]
+    end
+
+    test "sorts a node's findings whole, refused children by child id" do
+      document = %Document{
+        root: [
+          %Node{
+            children: [
+              %Node{id: "n_HpprvB0V-4aB", type: "test/plain", version: 1},
+              %Node{id: "n_Cy2VLEr1M6t9", type: "test/plain", version: 1}
+            ],
+            id: "n_pRWK-vNzXQjm",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{
+          containment: %Containment{allowed: ["test/example"]},
+          name: "test/example",
+          version: 1
+        },
+        "test/plain" => %Manifest{name: "test/plain", version: 1}
+      }
+
+      assert validate(document, manifests) == [
+               {:refused_child, "n_pRWK-vNzXQjm", "n_Cy2VLEr1M6t9"},
+               {:refused_child, "n_pRWK-vNzXQjm", "n_HpprvB0V-4aB"}
+             ]
+    end
+
+    test "sorts above the flat map's 32-key boundary" do
+      attribute = fn index -> {"key-#{index}", index} end
+
+      document = %Document{
+        root: [
+          %Node{
+            attributes: Map.new(1..40, attribute),
+            id: "n_pRWK-vNzXQjm",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{name: "test/example", version: 1}
+      }
+
+      report = validate(document, manifests)
+
+      assert length(report) == 40
+      assert report == Enum.sort(report)
+    end
+  end
 
   describe "validate_admission/2" do
     import Conformance, only: [validate_admission: 2]

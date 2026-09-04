@@ -17,19 +17,38 @@ defmodule Masonree.Conformance do
   The manifests are consulted as a plain map from block name to manifest, a
   shape any caller can build from whatever holds its blocks. Each class of
   problem is one function over a node and the manifest that declares its
-  block, as each class of malformed declaration is one function over a manifest
-  in `Masonree.Manifest`.
+  block, as each class of malformed declaration is one function over a
+  manifest in `Masonree.Manifest`, and `validate/2` gathers every class over
+  every node of a document as `Masonree.Manifest.validate/1` gathers every class
+  over a manifest.
 
   Whether a type may hold a value is not answered here: the member answers,
   through `Masonree.Type.admits?/2`, and this module never learns what a type
   is. Problems carry the node’s id and whatever the document cannot already
   supply — the id finds the node, the node knows its type, so an unknown block
   needs no second element where an attribute problem names its key.
+
+  ## Example
+
+      iex> document = %Document{
+      ...>   root: [
+      ...>     %Node{id: "n_x2JpBOqiitAS", type: "test/example", version: 1}
+      ...>   ]
+      ...> }
+      iex>
+      iex> manifests = %{
+      ...>   "test/example" => %Manifest{name: "test/example", version: 1}
+      ...> }
+      iex>
+      iex> validate(document, manifests)
+      []
+
   """
   @moduledoc since: "0.7.0"
 
   alias Masonree
 
+  alias Masonree.Document
   alias Masonree.Manifest
   alias Masonree.Node
   alias Masonree.Type
@@ -45,9 +64,17 @@ defmodule Masonree.Conformance do
   @typedoc since: "0.7.0"
   @type containment() :: Containment.t()
 
+  @typedoc "Represents the document under report."
+  @typedoc since: "0.7.0"
+  @type document() :: Document.t()
+
   @typedoc "Represents the declaration a node is judged against."
   @typedoc since: "0.7.0"
   @type manifest() :: Manifest.t()
+
+  @typedoc "Represents the manifests consulted, by block name."
+  @typedoc since: "0.7.0"
+  @type manifests() :: %{Manifest.name() => manifest()}
 
   @typedoc "Represents one finding about one node."
   @typedoc since: "0.7.0"
@@ -58,10 +85,54 @@ defmodule Masonree.Conformance do
           | {:too_few_children, Node.id()}
           | {:too_many_children, Node.id()}
           | {:unknown_attribute, Node.id(), Manifest.key()}
+          | {:unknown_block, Node.id()}
 
   @typedoc "Represents every finding reported."
   @typedoc since: "0.7.0"
   @type problems() :: [problem()]
+
+  @doc """
+  Returns every problem in `document`, in document order, against `manifests`.
+
+  Each node answers whole. An unknown block ends the node’s report: attributes
+  cannot be judged against a manifest that is not there, so the one finding
+  stands alone rather than heading a cascade. A known block reports every class
+  — keys, requiredness, values, admission, cardinality — concatenated and
+  sorted, as `Masonree.Manifest.validate/1` sorts a manifest’s, so that a node’s
+  report is deterministic whatever the map order underneath. Sorted is term
+  order: a count finding, being the shorter tuple, leads a node’s report, and
+  refused children stand by child id. Nodes answer in document order — the
+  walk’s order — so the page’s report keeps the page’s order with each node’s
+  findings sorted within it, and two runs over one page agree to the finding. An
+  empty report is the document conforming; an empty document conforms vacuously,
+  there being nothing to report on.
+
+  The same tuple `Masonree.Projection` reports for a block it cannot render,
+  `{:unknown_block, id}`, names the same fact here: one vocabulary, wherever the
+  fact surfaces.
+
+  What sits at the top of the page is not judged here: that is the container’s
+  question, asked with the container’s own rule in hand, and a document knows
+  no container.
+
+  ## Example
+
+      iex> document = %Document{
+      ...>   root: [%Node{id: "n_uV2ZAiyerpTg", type: "test/rogue", version: 1}]
+      ...> }
+      iex>
+      iex> validate(document, %{})
+      [{:unknown_block, "n_uV2ZAiyerpTg"}]
+
+  """
+  @doc since: "0.7.0"
+  @spec validate(document(), manifests()) :: problems()
+  def validate(document, manifests)
+      when is_struct(document, Document) and is_map(manifests) do
+    nodes = Document.walk(document)
+
+    Enum.flat_map(nodes, &validate_node(&1, manifests))
+  end
 
   @doc """
   Returns a rejection for each child of `node` that `manifest` refuses.
@@ -278,4 +349,25 @@ defmodule Masonree.Conformance do
   @spec overfull?(non_neg_integer(), nil | non_neg_integer()) :: boolean()
   defp overfull?(_count, nil), do: false
   defp overfull?(count, maximum), do: count > maximum
+
+  @spec validate_node(block_node(), manifests()) :: problems()
+  defp validate_node(node, manifests) do
+    case Map.fetch(manifests, node.type) do
+      :error ->
+        [{:unknown_block, node.id}]
+
+      {:ok, manifest} ->
+        reports = [
+          validate_admission(node, manifest),
+          validate_cardinality(node, manifest),
+          validate_keys(node, manifest),
+          validate_requiredness(node, manifest),
+          validate_values(node, manifest)
+        ]
+
+        reports
+        |> Enum.concat()
+        |> Enum.sort()
+    end
+  end
 end
