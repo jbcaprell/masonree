@@ -598,6 +598,92 @@ defmodule Masonree.ConformanceTest do
     end
   end
 
+  describe "validate_root/2" do
+    import Conformance, only: [validate_root: 2]
+
+    test "admits a count within the bounds" do
+      document = %Document{
+        root: [%Node{id: "n_2-mvE1651xJP", type: "test/example", version: 1}]
+      }
+
+      containment = %Containment{maximum: 2, minimum: 1}
+
+      assert validate_root(document, containment) == []
+    end
+
+    test "admits every root where allowed is absent" do
+      document = %Document{
+        root: [%Node{id: "n_TC9brJgOKMzs", type: "test/rogue", version: 1}]
+      }
+
+      assert validate_root(document, %Containment{}) == []
+    end
+
+    test "admits everything under no rule" do
+      assert validate_root(%Document{}, %Containment{}) == []
+    end
+
+    test "admits the roots the rule lists" do
+      document = %Document{
+        root: [%Node{id: "n_TC9brJgOKMzs", type: "test/example", version: 1}]
+      }
+
+      containment = %Containment{allowed: ["test/example"]}
+
+      assert validate_root(document, containment) == []
+    end
+
+    test "refuses each outsider, sorted by id" do
+      document = %Document{
+        root: [
+          %Node{id: "n_YHXf5UYFI9E9", type: "test/rogue", version: 1},
+          %Node{id: "n_TC9brJgOKMzs", type: "test/rogue", version: 1}
+        ]
+      }
+
+      containment = %Containment{allowed: ["test/example"]}
+
+      assert validate_root(document, containment) == [
+               {:refused_root, "n_TC9brJgOKMzs"},
+               {:refused_root, "n_YHXf5UYFI9E9"}
+             ]
+    end
+
+    test "reports nothing for an empty document under an empty rule" do
+      assert validate_root(%Document{}, %Containment{allowed: []}) == []
+    end
+
+    test "reports overfilled above the ceiling, once" do
+      nodes =
+        for index <- 1..5 do
+          %Node{id: "n_2-mvE1651xJ#{index}", type: "test/example", version: 1}
+        end
+
+      document = %Document{root: nodes}
+      containment = %Containment{maximum: 1}
+
+      assert validate_root(document, containment) == [:overfilled_root]
+    end
+
+    test "reports the count beside the refusals, atom first" do
+      document = %Document{
+        root: [%Node{id: "n_TC9brJgOKMzs", type: "test/rogue", version: 1}]
+      }
+
+      containment = %Containment{allowed: ["test/example"], minimum: 2}
+
+      assert validate_root(document, containment) == [
+               :underfilled_root,
+               {:refused_root, "n_TC9brJgOKMzs"}
+             ]
+    end
+
+    test "reports underfilled below the floor" do
+      assert validate_root(%Document{}, %Containment{minimum: 1}) ==
+               [:underfilled_root]
+    end
+  end
+
   describe "validate_values/2" do
     import Conformance, only: [validate_values: 2]
 

@@ -76,12 +76,15 @@ defmodule Masonree.Conformance do
   @typedoc since: "0.7.0"
   @type manifests() :: %{Manifest.name() => manifest()}
 
-  @typedoc "Represents one finding about one node."
+  @typedoc "Represents one finding, about a node or about the page."
   @typedoc since: "0.7.0"
   @type problem() ::
-          {:bad_attribute_value, Node.id(), Manifest.key()}
+          :overfilled_root
+          | :underfilled_root
+          | {:bad_attribute_value, Node.id(), Manifest.key()}
           | {:missing_attribute, Node.id(), Manifest.key()}
           | {:refused_child, Node.id(), Node.id()}
+          | {:refused_root, Node.id()}
           | {:too_few_children, Node.id()}
           | {:too_many_children, Node.id()}
           | {:unknown_attribute, Node.id(), Manifest.key()}
@@ -305,6 +308,51 @@ defmodule Masonree.Conformance do
   end
 
   @doc """
+  Returns every problem at the top of `document`, by `containment`.
+
+  What may sit at the root is a containment question whose parent is the page:
+  whatever holds the page hands its own rule in, and the rule is asked exactly
+  as any parent’s is. A node the rule refuses reports `{:refused_root, id}`; a
+  root below the rule’s floor reports `:underfilled_root` and one above its
+  ceiling `:overfilled_root` — bare atoms, because there is no container node
+  whose id a tuple could carry: the container is the page. The report is sorted,
+  and term order sorts atoms before tuples, so the count precedes every refusal
+  and the refusals stand by id.
+
+  An empty root under a rule with a floor above zero is underfilled — a
+  count of zero is still a count — and a rule with no ceiling and no floor
+  refuses no count, absence refusing nothing. Only the top level is judged —
+  everything beneath it belongs to `validate/2` and to the containments of the
+  blocks themselves.
+
+  ## Example
+
+      iex> document = %Document{
+      ...>   root: [%Node{id: "n_5oEbEXkO3yBq", type: "test/rogue", version: 1}]
+      ...> }
+      iex>
+      iex> containment = %Containment{allowed: ["test/example"]}
+      iex>
+      iex> validate_root(document, containment)
+      [{:refused_root, "n_5oEbEXkO3yBq"}]
+
+  """
+  @doc since: "0.7.0"
+  @spec validate_root(document(), containment()) :: problems()
+  def validate_root(document, containment)
+      when is_struct(document, Document) and
+             is_struct(containment, Containment) do
+    reports = [
+      validate_root_admission(document, containment),
+      validate_root_cardinality(document, containment)
+    ]
+
+    reports
+    |> Enum.concat()
+    |> Enum.sort()
+  end
+
+  @doc """
   Returns a rejection for each value `node` holds that its type refuses.
 
   The question is the member’s — `Masonree.Type.admits?/2`, asked with the
@@ -368,6 +416,25 @@ defmodule Masonree.Conformance do
         reports
         |> Enum.concat()
         |> Enum.sort()
+    end
+  end
+
+  @spec validate_root_admission(document(), containment()) :: problems()
+  defp validate_root_admission(document, containment) do
+    for node <- document.root,
+        not Containment.admits?(containment, node.type) do
+      {:refused_root, node.id}
+    end
+  end
+
+  @spec validate_root_cardinality(document(), containment()) :: problems()
+  defp validate_root_cardinality(document, containment) do
+    count = length(document.root)
+
+    cond do
+      count < containment.minimum -> [:underfilled_root]
+      overfull?(count, containment.maximum) -> [:overfilled_root]
+      true -> []
     end
   end
 end
