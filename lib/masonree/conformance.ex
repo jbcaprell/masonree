@@ -32,6 +32,7 @@ defmodule Masonree.Conformance do
 
   alias Masonree.Manifest
   alias Masonree.Node
+  alias Masonree.Type
 
   alias Manifest.Attribute
 
@@ -46,7 +47,8 @@ defmodule Masonree.Conformance do
   @typedoc "Represents one finding about one node."
   @typedoc since: "0.7.0"
   @type problem() ::
-          {:missing_attribute, Node.id(), Manifest.key()}
+          {:bad_attribute_value, Node.id(), Manifest.key()}
+          | {:missing_attribute, Node.id(), Manifest.key()}
           | {:unknown_attribute, Node.id(), Manifest.key()}
 
   @typedoc "Represents every finding reported."
@@ -128,6 +130,48 @@ defmodule Masonree.Conformance do
     for {key, %Attribute{required: true}} <- attributes,
         not Map.has_key?(node.attributes, key) do
       {:missing_attribute, node.id, key}
+    end
+  end
+
+  @doc """
+  Returns a rejection for each value `node` holds that its type refuses.
+
+  The question is the member’s — `Masonree.Type.admits?/2`, asked with the
+  declared type — and this module adds nothing to the answer. Only a held key
+  with a declaration is asked: an undeclared key has no type to ask, and an
+  absent one holds nothing to judge, each being another function’s finding. A
+  `nil` is admitted by every member of the lattice, so a held `nil` is never a
+  wrong value here: absence is requiredness’s question, asked elsewhere, and the
+  two questions never report the same key for the same reason. The keys report
+  in the order the manifest’s attribute map iterates.
+
+  ## Example
+
+      iex> node = %Node{
+      ...>   attributes: %{"rank" => "2"},
+      ...>   id: "n_hkNIVsdOM2A4",
+      ...>   type: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> manifest = %Manifest{
+      ...>   attributes: %{"rank" => %Attribute{role: :chrome, type: :number}},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> validate_values(node, manifest)
+      [{:bad_attribute_value, "n_hkNIVsdOM2A4", "rank"}]
+
+  """
+  @doc since: "0.7.0"
+  @spec validate_values(block_node(), manifest()) :: problems()
+  def validate_values(node, %Manifest{attributes: attributes})
+      when is_struct(node, Node) do
+    for {key, %Attribute{type: type}} <- attributes,
+        Map.has_key?(node.attributes, key),
+        not Type.admits?(type, Map.fetch!(node.attributes, key)) do
+      {:bad_attribute_value, node.id, key}
     end
   end
 end

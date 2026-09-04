@@ -126,4 +126,96 @@ defmodule Masonree.ConformanceTest do
       assert validate_requiredness(node, manifest) == []
     end
   end
+
+  describe "validate_values/2" do
+    import Conformance, only: [validate_values: 2]
+
+    test "admits a value the type admits" do
+      node = %Node{
+        attributes: %{"level" => 2},
+        id: "n_MdOJ0Cx41C7A",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        attributes: %{"level" => %Attribute{role: :chrome, type: :number}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_values(node, manifest) == []
+    end
+
+    test "asks the member, so an enum refuses by membership" do
+      node = %Node{
+        attributes: %{"tag" => "h9"},
+        id: "n_MdOJ0Cx41C7A",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        attributes: %{
+          "tag" => %Attribute{role: :chrome, type: {:enum, ["h2", "h3"]}}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_values(node, manifest) ==
+               [{:bad_attribute_value, "n_MdOJ0Cx41C7A", "tag"}]
+    end
+
+    test "judges only what is held, absence being another question" do
+      node = %Node{id: "n_MdOJ0Cx41C7A", type: "test/example", version: 1}
+
+      manifest = %Manifest{
+        attributes: %{
+          "src" => %Attribute{required: true, role: :content, type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_values(node, manifest) == []
+    end
+
+    test "refuses a value the type refuses" do
+      node = %Node{
+        attributes: %{"level" => "2"},
+        id: "n_MdOJ0Cx41C7A",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        attributes: %{"level" => %Attribute{role: :chrome, type: :number}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_values(node, manifest) ==
+               [{:bad_attribute_value, "n_MdOJ0Cx41C7A", "level"}]
+    end
+
+    test "treats a held nil as the lattice does, admitted everywhere" do
+      node = %Node{
+        attributes: %{"src" => nil},
+        id: "n_MdOJ0Cx41C7A",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        attributes: %{
+          "src" => %Attribute{required: true, role: :content, type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_values(node, manifest) == []
+    end
+  end
 end
