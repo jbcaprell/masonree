@@ -4,6 +4,7 @@
     Masonree.Block,
     Masonree.Block.Paragraph,
     Masonree.Block.Section,
+    Masonree.Conformance,
     Masonree.Document,
     Masonree.Envelope,
     Masonree.Manifest,
