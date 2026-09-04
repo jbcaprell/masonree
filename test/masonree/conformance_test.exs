@@ -57,4 +57,73 @@ defmodule Masonree.ConformanceTest do
       assert validate_keys(node, manifest) == []
     end
   end
+
+  describe "validate_requiredness/2" do
+    import Conformance, only: [validate_requiredness: 2]
+
+    test "admits a held value" do
+      node = %Node{
+        attributes: %{"src" => "/logo.svg"},
+        id: "n_ovLbFWkleq08",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        attributes: %{
+          "src" => %Attribute{required: true, role: :content, type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_requiredness(node, manifest) == []
+    end
+
+    test "admits absence where nothing is required" do
+      node = %Node{id: "n_ovLbFWkleq08", type: "test/example", version: 1}
+
+      manifest = %Manifest{
+        attributes: %{"src" => %Attribute{role: :content, type: :string}},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_requiredness(node, manifest) == []
+    end
+
+    test "refuses a required absence" do
+      node = %Node{id: "n_ovLbFWkleq08", type: "test/example", version: 1}
+
+      manifest = %Manifest{
+        attributes: %{
+          "src" => %Attribute{required: true, role: :content, type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_requiredness(node, manifest) ==
+               [{:missing_attribute, "n_ovLbFWkleq08", "src"}]
+    end
+
+    test "treats a held nil as held" do
+      node = %Node{
+        attributes: %{"src" => nil},
+        id: "n_ovLbFWkleq08",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        attributes: %{
+          "src" => %Attribute{required: true, role: :content, type: :string}
+        },
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_requiredness(node, manifest) == []
+    end
+  end
 end

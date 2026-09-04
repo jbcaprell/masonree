@@ -33,6 +33,8 @@ defmodule Masonree.Conformance do
   alias Masonree.Manifest
   alias Masonree.Node
 
+  alias Manifest.Attribute
+
   @typedoc "Represents the node a finding is about."
   @typedoc since: "0.7.0"
   @type block_node() :: Node.t()
@@ -41,9 +43,15 @@ defmodule Masonree.Conformance do
   @typedoc since: "0.7.0"
   @type manifest() :: Manifest.t()
 
+  @typedoc "Represents one finding about one node."
+  @typedoc since: "0.7.0"
+  @type problem() ::
+          {:missing_attribute, Node.id(), Manifest.key()}
+          | {:unknown_attribute, Node.id(), Manifest.key()}
+
   @typedoc "Represents every finding reported."
   @typedoc since: "0.7.0"
-  @type problems() :: [{:unknown_attribute, Node.id(), Manifest.key()}]
+  @type problems() :: [problem()]
 
   @doc """
   Returns a rejection for each key `node` holds that `manifest` never declared.
@@ -81,6 +89,45 @@ defmodule Masonree.Conformance do
     for {key, _value} <- node.attributes,
         not Map.has_key?(attributes, key) do
       {:unknown_attribute, node.id, key}
+    end
+  end
+
+  @doc """
+  Returns a rejection for each required key `node` holds nothing at.
+
+  Requiredness means no honest default exists, so the one thing it can refuse is
+  absence — the key missing from the node altogether. A key held with any value,
+  `nil` included, is held: what the value may be is the type’s question, asked
+  elsewhere, and the two questions never report the same key for the same
+  reason. The keys report in the order the manifest’s attribute map iterates.
+
+  ## Example
+
+      iex> node = %Node{id: "n_MHSy2NEcxAOr", type: "test/example", version: 1}
+      iex>
+      iex> manifest = %Manifest{
+      ...>   attributes: %{
+      ...>     "src" => %Attribute{
+      ...>       required: true,
+      ...>       role: :content,
+      ...>       type: :string
+      ...>     }
+      ...>   },
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> validate_requiredness(node, manifest)
+      [{:missing_attribute, "n_MHSy2NEcxAOr", "src"}]
+
+  """
+  @doc since: "0.7.0"
+  @spec validate_requiredness(block_node(), manifest()) :: problems()
+  def validate_requiredness(node, %Manifest{attributes: attributes})
+      when is_struct(node, Node) do
+    for {key, %Attribute{required: true}} <- attributes,
+        not Map.has_key?(node.attributes, key) do
+      {:missing_attribute, node.id, key}
     end
   end
 end
