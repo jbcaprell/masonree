@@ -27,4 +27,60 @@ defmodule Masonree.Conformance do
   needs no second element where an attribute problem names its key.
   """
   @moduledoc since: "0.7.0"
+
+  alias Masonree
+
+  alias Masonree.Manifest
+  alias Masonree.Node
+
+  @typedoc "Represents the node a finding is about."
+  @typedoc since: "0.7.0"
+  @type block_node() :: Node.t()
+
+  @typedoc "Represents the declaration a node is judged against."
+  @typedoc since: "0.7.0"
+  @type manifest() :: Manifest.t()
+
+  @typedoc "Represents every finding reported."
+  @typedoc since: "0.7.0"
+  @type problems() :: [{:unknown_attribute, Node.id(), Manifest.key()}]
+
+  @doc """
+  Returns a rejection for each key `node` holds that `manifest` never declared.
+
+  A stored key with no declaration is content the manifest cannot explain — an
+  attribute renamed since the page was saved, or written by a block since
+  changed — and every such key is named in its own rejection. What to do about
+  one is not answered here: a report changes nothing. The keys report in the
+  order the node’s attribute map iterates, which above 32 keys is not the order
+  they were written in.
+
+  ## Example
+
+      iex> node = %Node{
+      ...>   attributes: %{"content" => "Hello, world!", "level" => 2},
+      ...>   id: "n_9Nh3XZbvenaz",
+      ...>   type: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> manifest = %Manifest{
+      ...>   attributes: %{"content" => %Attribute{type: :string}},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> validate_keys(node, manifest)
+      [{:unknown_attribute, "n_9Nh3XZbvenaz", "level"}]
+
+  """
+  @doc since: "0.7.0"
+  @spec validate_keys(block_node(), manifest()) :: problems()
+  def validate_keys(node, %Manifest{attributes: attributes})
+      when is_struct(node, Node) do
+    for {key, _value} <- node.attributes,
+        not Map.has_key?(attributes, key) do
+      {:unknown_attribute, node.id, key}
+    end
+  end
 end
