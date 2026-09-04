@@ -109,6 +109,116 @@ defmodule Masonree.ConformanceTest do
     end
   end
 
+  describe "validate_cardinality/2" do
+    import Conformance, only: [validate_cardinality: 2]
+
+    test "admits a count at the ceiling exactly" do
+      children =
+        for index <- 1..2 do
+          %Node{id: "n_iAbEZ44WOnR#{index}", type: "test/example", version: 1}
+        end
+
+      node = %Node{
+        children: children,
+        id: "n_JJv0eKPqx9EU",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        containment: %Containment{maximum: 2},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_cardinality(node, manifest) == []
+    end
+
+    test "admits a count within the bounds" do
+      node = %Node{
+        children: [
+          %Node{id: "n_iAbEZ44WOnRe", type: "test/example", version: 1}
+        ],
+        id: "n_JJv0eKPqx9EU",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        containment: %Containment{maximum: 2, minimum: 1},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_cardinality(node, manifest) == []
+    end
+
+    test "admits any count where no containment is declared" do
+      node = %Node{id: "n_JJv0eKPqx9EU", type: "test/example", version: 1}
+      manifest = %Manifest{name: "test/example", version: 1}
+
+      assert validate_cardinality(node, manifest) == []
+    end
+
+    test "never overfills under a nil ceiling" do
+      children =
+        for index <- 1..40 do
+          %Node{id: "n_iAbEZ44WOnR#{index}", type: "test/example", version: 1}
+        end
+
+      node = %Node{
+        children: children,
+        id: "n_JJv0eKPqx9EU",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        containment: %Containment{},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_cardinality(node, manifest) == []
+    end
+
+    test "reports too few once below the floor" do
+      node = %Node{id: "n_JJv0eKPqx9EU", type: "test/example", version: 1}
+
+      manifest = %Manifest{
+        containment: %Containment{minimum: 2},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_cardinality(node, manifest) ==
+               [{:too_few_children, "n_JJv0eKPqx9EU"}]
+    end
+
+    test "reports too many once, however many stand over" do
+      children =
+        for index <- 1..5 do
+          %Node{id: "n_iAbEZ44WOnR#{index}", type: "test/example", version: 1}
+        end
+
+      node = %Node{
+        children: children,
+        id: "n_JJv0eKPqx9EU",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        containment: %Containment{maximum: 1},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_cardinality(node, manifest) ==
+               [{:too_many_children, "n_JJv0eKPqx9EU"}]
+    end
+  end
+
   describe "validate_keys/2" do
     import Conformance, only: [validate_keys: 2]
 

@@ -55,6 +55,8 @@ defmodule Masonree.Conformance do
           {:bad_attribute_value, Node.id(), Manifest.key()}
           | {:missing_attribute, Node.id(), Manifest.key()}
           | {:refused_child, Node.id(), Node.id()}
+          | {:too_few_children, Node.id()}
+          | {:too_many_children, Node.id()}
           | {:unknown_attribute, Node.id(), Manifest.key()}
 
   @typedoc "Represents every finding reported."
@@ -106,6 +108,50 @@ defmodule Masonree.Conformance do
     for child <- node.children,
         not Containment.admits?(containment, child.type) do
       {:refused_child, node.id, child.id}
+    end
+  end
+
+  @doc """
+  Returns the rejection where `node`’s children breach `manifest`’s bounds.
+
+  One finding per interior, however many children breach: a count below the
+  floor reports `{:too_few_children, id}` and one above the ceiling reports
+  `{:too_many_children, id}`, once, because the repair is one edit to one
+  interior and a finding per excess child would be the same fact counted. A
+  ceiling of `nil` is no ceiling, and a manifest declaring no containment admits
+  any count. The two bounds cannot both be breached —
+  `Masonree.Manifest.validate_cardinality/1` refused that declaration at the
+  block’s own compile.
+
+  ## Example
+
+      iex> node = %Node{id: "n_Sf3Ptv7SBQ-A", type: "test/example", version: 1}
+      iex>
+      iex> manifest = %Manifest{
+      ...>   containment: %Containment{minimum: 1},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> validate_cardinality(node, manifest)
+      [{:too_few_children, "n_Sf3Ptv7SBQ-A"}]
+
+  """
+  @doc since: "0.7.0"
+  @spec validate_cardinality(block_node(), manifest()) :: problems()
+  def validate_cardinality(node, %Manifest{containment: nil})
+      when is_struct(node, Node) do
+    []
+  end
+
+  def validate_cardinality(node, %Manifest{containment: containment})
+      when is_struct(node, Node) do
+    count = length(node.children)
+
+    cond do
+      count < containment.minimum -> [{:too_few_children, node.id}]
+      overfull?(count, containment.maximum) -> [{:too_many_children, node.id}]
+      true -> []
     end
   end
 
@@ -228,4 +274,8 @@ defmodule Masonree.Conformance do
       {:bad_attribute_value, node.id, key}
     end
   end
+
+  @spec overfull?(non_neg_integer(), nil | non_neg_integer()) :: boolean()
+  defp overfull?(_count, nil), do: false
+  defp overfull?(count, maximum), do: count > maximum
 end
