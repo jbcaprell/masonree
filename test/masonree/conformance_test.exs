@@ -11,8 +11,103 @@ defmodule Masonree.ConformanceTest do
   alias Masonree.Node
 
   alias Manifest.Attribute
+  alias Manifest.Containment
 
   doctest Conformance, import: true
+
+  describe "validate_admission/2" do
+    import Conformance, only: [validate_admission: 2]
+
+    test "admits any interior where no containment is declared" do
+      node = %Node{
+        children: [%Node{id: "n_Mk3PjLYVpuGI", type: "test/rogue", version: 1}],
+        id: "n_QjR9Ni9nMkzO",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{name: "test/example", version: 1}
+
+      assert validate_admission(node, manifest) == []
+    end
+
+    test "admits every child where allowed is absent" do
+      node = %Node{
+        children: [%Node{id: "n_Mk3PjLYVpuGI", type: "test/rogue", version: 1}],
+        id: "n_QjR9Ni9nMkzO",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        containment: %Containment{},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_admission(node, manifest) == []
+    end
+
+    test "admits the children the rule lists" do
+      node = %Node{
+        children: [
+          %Node{id: "n_Mk3PjLYVpuGI", type: "test/example", version: 1}
+        ],
+        id: "n_QjR9Ni9nMkzO",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        containment: %Containment{allowed: ["test/example"]},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_admission(node, manifest) == []
+    end
+
+    test "refuses the pair from the parent, both ids" do
+      node = %Node{
+        children: [%Node{id: "n_Mk3PjLYVpuGI", type: "test/rogue", version: 1}],
+        id: "n_QjR9Ni9nMkzO",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        containment: %Containment{allowed: ["test/example"]},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_admission(node, manifest) ==
+               [{:refused_child, "n_QjR9Ni9nMkzO", "n_Mk3PjLYVpuGI"}]
+    end
+
+    test "reports refused children in the order the node holds them" do
+      node = %Node{
+        children: [
+          %Node{id: "n_HpprvB0V-4aB", type: "test/rogue", version: 1},
+          %Node{id: "n_Cy2VLEr1M6t9", type: "test/rogue", version: 1}
+        ],
+        id: "n_QjR9Ni9nMkzO",
+        type: "test/example",
+        version: 1
+      }
+
+      manifest = %Manifest{
+        containment: %Containment{allowed: ["test/example"]},
+        name: "test/example",
+        version: 1
+      }
+
+      assert validate_admission(node, manifest) == [
+               {:refused_child, "n_QjR9Ni9nMkzO", "n_HpprvB0V-4aB"},
+               {:refused_child, "n_QjR9Ni9nMkzO", "n_Cy2VLEr1M6t9"}
+             ]
+    end
+  end
 
   describe "validate_keys/2" do
     import Conformance, only: [validate_keys: 2]

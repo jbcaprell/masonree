@@ -35,10 +35,15 @@ defmodule Masonree.Conformance do
   alias Masonree.Type
 
   alias Manifest.Attribute
+  alias Manifest.Containment
 
   @typedoc "Represents the node a finding is about."
   @typedoc since: "0.7.0"
   @type block_node() :: Node.t()
+
+  @typedoc "Represents the rule a node’s interior is judged against."
+  @typedoc since: "0.7.0"
+  @type containment() :: Containment.t()
 
   @typedoc "Represents the declaration a node is judged against."
   @typedoc since: "0.7.0"
@@ -49,11 +54,60 @@ defmodule Masonree.Conformance do
   @type problem() ::
           {:bad_attribute_value, Node.id(), Manifest.key()}
           | {:missing_attribute, Node.id(), Manifest.key()}
+          | {:refused_child, Node.id(), Node.id()}
           | {:unknown_attribute, Node.id(), Manifest.key()}
 
   @typedoc "Represents every finding reported."
   @typedoc since: "0.7.0"
   @type problems() :: [problem()]
+
+  @doc """
+  Returns a rejection for each child of `node` that `manifest` refuses.
+
+  A child the containment refuses reports from the parent’s position —
+  `{:refused_child, parent, child}` — because the refusal is the parent’s
+  finding about its own interior, and the pair of ids is what an editor needs to
+  show both ends of it. Whether a name is admitted is the rule’s question,
+  `Masonree.Manifest.Containment.admits?/2`, and this module adds nothing to the
+  answer. A manifest declaring no containment admits any interior: `nil` is the
+  absence of the rule, and absence refuses nothing. Children report in the order
+  the node holds them.
+
+  ## Example
+
+      iex> node = %Node{
+      ...>   children: [
+      ...>     %Node{id: "n_UysjCPMEG4GB", type: "test/rogue", version: 1}
+      ...>   ],
+      ...>   id: "n_2NDkyfled3-Q",
+      ...>   type: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> manifest = %Manifest{
+      ...>   containment: %Containment{allowed: ["test/example"]},
+      ...>   name: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> validate_admission(node, manifest)
+      [{:refused_child, "n_2NDkyfled3-Q", "n_UysjCPMEG4GB"}]
+
+  """
+  @doc since: "0.7.0"
+  @spec validate_admission(block_node(), manifest()) :: problems()
+  def validate_admission(node, %Manifest{containment: nil})
+      when is_struct(node, Node) do
+    []
+  end
+
+  def validate_admission(node, %Manifest{containment: containment})
+      when is_struct(node, Node) do
+    for child <- node.children,
+        not Containment.admits?(containment, child.type) do
+      {:refused_child, node.id, child.id}
+    end
+  end
 
   @doc """
   Returns a rejection for each key `node` holds that `manifest` never declared.
