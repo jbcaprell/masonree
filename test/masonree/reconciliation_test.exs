@@ -60,6 +60,43 @@ defmodule Masonree.ReconciliationTest do
     end
   end
 
+  describe "report_dropped/2" do
+    import Reconciliation, only: [report_dropped: 2]
+
+    test "names each key the manifest does not declare" do
+      node = %Node{
+        attributes: %{"content" => "Hello, world!", "level" => 2},
+        id: "n_5oFH-2ZgNhL8",
+        type: "test/example",
+        version: 1
+      }
+
+      assert report_dropped(node, %{}) == [
+               {:dropped_attribute, "n_5oFH-2ZgNhL8", "content"},
+               {:dropped_attribute, "n_5oFH-2ZgNhL8", "level"}
+             ]
+    end
+
+    test "reports nothing for a node holding no attributes" do
+      node = %Node{id: "n_5oFH-2ZgNhL8", type: "test/example", version: 1}
+
+      assert report_dropped(node, %{}) == []
+    end
+
+    test "reports nothing where every key is declared" do
+      node = %Node{
+        attributes: %{"content" => "Hello, world!"},
+        id: "n_5oFH-2ZgNhL8",
+        type: "test/example",
+        version: 1
+      }
+
+      declarations = %{"content" => %Attribute{role: :content, type: :string}}
+
+      assert report_dropped(node, declarations) == []
+    end
+  end
+
   describe "report_unrepresentable/1" do
     import Reconciliation, only: [report_unrepresentable: 1]
 

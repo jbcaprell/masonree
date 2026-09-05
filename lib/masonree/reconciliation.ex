@@ -52,7 +52,9 @@ defmodule Masonree.Reconciliation do
 
   @typedoc "Represents one repair that lost something, or could not run."
   @typedoc since: "0.8.0"
-  @type problem() :: {:unrepresentable_attribute, id(), term()}
+  @type problem() ::
+          {:dropped_attribute, id(), key()}
+          | {:unrepresentable_attribute, id(), term()}
 
   @typedoc "Represents everything reported, in document order."
   @typedoc since: "0.8.0"
@@ -115,6 +117,38 @@ defmodule Masonree.Reconciliation do
   def put_default(attributes, key, default)
       when is_map(attributes) and is_binary(key) do
     Map.put_new(attributes, key, default)
+  end
+
+  @doc """
+  Returns a rejection for each key `node` holds that `declared` does not.
+
+  The twin of `Masonree.Conformance.validate_keys/2`, at the other posture: that
+  report leaves the key in place and names it; this one is written for the
+  repair that removes it, and once the healed document is stored the report is
+  the only record the key was ever there. Every such key is named in its own
+  rejection, in the order the node’s attribute map iterates, which above 32 keys
+  is not the order they were written in.
+
+  ## Example
+
+      iex> node = %Node{
+      ...>   attributes: %{"content" => "Hello, world!", "level" => 2},
+      ...>   id: "n_wUnlM-3D1LCA",
+      ...>   type: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> report_dropped(node, %{"content" => %Attribute{type: :string}})
+      [{:dropped_attribute, "n_wUnlM-3D1LCA", "level"}]
+
+  """
+  @doc since: "0.8.0"
+  @spec report_dropped(block_node(), declarations()) :: problems()
+  def report_dropped(node, declarations)
+      when is_struct(node, Node) and is_map(declarations) do
+    for {key, _value} <- node.attributes, not Map.has_key?(declarations, key) do
+      {:dropped_attribute, node.id, key}
+    end
   end
 
   @doc """
