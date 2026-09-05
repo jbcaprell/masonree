@@ -6,10 +6,43 @@ defmodule Masonree.ReconciliationTest do
 
   alias Masonree
 
+  alias Masonree.Manifest
   alias Masonree.Node
   alias Masonree.Reconciliation
 
+  alias Manifest.Attribute
+
   doctest Reconciliation, import: true
+
+  describe "fill_defaults/2" do
+    import Reconciliation, only: [fill_defaults: 2]
+
+    test "fills every declared default the node left absent" do
+      declarations = %{
+        "content" => %Attribute{default: "", role: :content, type: :string},
+        "tag" => %Attribute{default: "h2", role: :chrome, type: :string}
+      }
+
+      assert fill_defaults(%{}, declarations) ==
+               %{"content" => "", "tag" => "h2"}
+    end
+
+    test "keeps every value it was given" do
+      attributes = %{"content" => "Hello, world!", "level" => 2}
+
+      declarations = %{
+        "content" => %Attribute{default: "", role: :content, type: :string}
+      }
+
+      assert fill_defaults(attributes, declarations) == attributes
+    end
+
+    test "leaves a nil default unwritten through the fold" do
+      declarations = %{"tag" => %Attribute{role: :chrome, type: :string}}
+
+      assert fill_defaults(%{}, declarations) == %{}
+    end
+  end
 
   describe "put_default/3" do
     import Reconciliation, only: [put_default: 3]

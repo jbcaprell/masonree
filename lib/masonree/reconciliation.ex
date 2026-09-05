@@ -34,6 +34,10 @@ defmodule Masonree.Reconciliation do
   @typedoc since: "0.8.0"
   @type block_node() :: Node.t()
 
+  @typedoc "Represents the declarations a repair fills defaults from."
+  @typedoc since: "0.8.0"
+  @type declarations() :: Manifest.attributes()
+
   @typedoc "Represents the default a repair writes for a declared silence."
   @typedoc since: "0.8.0"
   @type default() :: Type.default()
@@ -57,6 +61,35 @@ defmodule Masonree.Reconciliation do
   @typedoc "Represents anything a node’s attribute map can hold, key or value."
   @typedoc since: "0.8.0"
   @type value() :: Type.value()
+
+  @doc """
+  Returns `attributes` with every declared default filled in.
+
+  The fold of `put_default/3` over a manifest’s declarations: a `nil` default is
+  never written, and a value already held is never overwritten — the fold
+  inherits both rules from the function it folds, and adds none of its own. What
+  a node holds after this is what its author decided plus what its block decided
+  for the silences.
+
+  ## Example
+
+      iex> declaration = %{
+      ...>   "content" => %Attribute{default: "", type: :string},
+      ...>   "tag" => %Attribute{type: :string}
+      ...> }
+      iex>
+      iex> fill_defaults(%{}, declaration)
+      %{"content" => ""}
+
+  """
+  @doc since: "0.8.0"
+  @spec fill_defaults(attributes(), declarations()) :: attributes()
+  def fill_defaults(attributes, declarations)
+      when is_map(attributes) and is_map(declarations) do
+    Enum.reduce(declarations, attributes, fn {key, attribute}, acc ->
+      put_default(acc, key, attribute.default)
+    end)
+  end
 
   @doc """
   Returns `attributes` with `default` written at `key`, where both halves agree.
