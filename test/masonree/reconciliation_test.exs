@@ -239,4 +239,24 @@ defmodule Masonree.ReconciliationTest do
                [{:coerced, "tag", "h2"}]
     end
   end
+
+  describe "write_repair/2" do
+    import Reconciliation, only: [write_repair: 2]
+
+    test "deletes the key where the healed value is nil" do
+      assert write_repair(%{"tag" => "h9"}, {"tag", nil}) == %{}
+    end
+
+    test "folds, so many repairs write one map" do
+      repairs = [{"level", 2}, {"tag", nil}]
+      attributes = %{"level" => "two", "tag" => "h9"}
+      write = fn repair, acc -> write_repair(acc, repair) end
+
+      assert Enum.reduce(repairs, attributes, write) == %{"level" => 2}
+    end
+
+    test "replaces the held value with the healed one" do
+      assert write_repair(%{"tag" => "h9"}, {"tag", "h2"}) == %{"tag" => "h2"}
+    end
+  end
 end

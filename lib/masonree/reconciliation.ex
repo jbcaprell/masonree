@@ -44,6 +44,10 @@ defmodule Masonree.Reconciliation do
   @typedoc since: "0.8.0"
   @type default() :: Type.default()
 
+  @typedoc "Represents a repair as it is written: the key and the healed value."
+  @typedoc since: "0.8.0"
+  @type healed() :: {key(), value()}
+
   @typedoc "Represents the id of the node a repair names."
   @typedoc since: "0.8.0"
   @type id() :: Node.id()
@@ -306,6 +310,34 @@ defmodule Masonree.Reconciliation do
         {mode, healed} <- [Type.heal(type, value, default)] do
       {mode, key, healed}
     end
+  end
+
+  @doc """
+  Returns `attributes` with one repair written at its key.
+
+  A healed value of `nil` deletes the key rather than storing it: a declared
+  default of `nil` is an attribute with no default at all, so a value coerced
+  toward one is a key removed rather than a key holding `nil` — absence is what
+  the manifest said, a stored `nil` is a lie a block would read as an answer,
+  and the absence is exactly what `Masonree.Conformance` reports where it
+  matters. Any other healed value replaces what was held.
+
+  ## Example
+
+      iex> write_repair(%{"tag" => "h9"}, {"tag", nil})
+      %{}
+
+  """
+  @doc since: "0.8.0"
+  @spec write_repair(attributes(), healed()) :: attributes()
+  def write_repair(attributes, {key, nil})
+      when is_map(attributes) and is_binary(key) do
+    Map.delete(attributes, key)
+  end
+
+  def write_repair(attributes, {key, healed})
+      when is_map(attributes) and is_binary(key) do
+    Map.put(attributes, key, healed)
   end
 
   @spec unrepresentable?({term(), term()}) :: boolean()
