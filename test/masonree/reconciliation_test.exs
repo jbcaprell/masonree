@@ -141,4 +141,28 @@ defmodule Masonree.ReconciliationTest do
       refute representable?("null\0here")
     end
   end
+
+  describe "take_declared/2" do
+    import Reconciliation, only: [take_declared: 2]
+
+    test "keeps every declared key, whatever it holds" do
+      attributes = %{"content" => "Hello, world!", "tag" => 2}
+
+      declarations = %{
+        "content" => %Attribute{role: :content, type: :string},
+        "tag" => %Attribute{role: :chrome, type: :string}
+      }
+
+      assert take_declared(attributes, declarations) == attributes
+    end
+
+    test "removes every key no declaration explains" do
+      attributes = %{"content" => "Hello, world!", "level" => 2, "tag" => "h2"}
+
+      declarations = %{"content" => %Attribute{role: :content, type: :string}}
+
+      assert take_declared(attributes, declarations) ==
+               %{"content" => "Hello, world!"}
+    end
+  end
 end

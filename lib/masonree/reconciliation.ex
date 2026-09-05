@@ -198,6 +198,36 @@ defmodule Masonree.Reconciliation do
 
   def representable?(_value), do: false
 
+  @doc """
+  Returns `attributes` narrowed to the keys `declarations` explains.
+
+  The one repair whose loss the healed node cannot show: a key no declaration
+  explains leaves, and once it has left nothing on the node says it was there —
+  which is why the removal stands as its own function rather than a line in the
+  assembler, so that what is removed and what is reported can be read as one
+  membership. Nothing else changes: a declared key absent stays absent, filling
+  it being `fill_defaults/2`’s decision, and a declared value held stays held
+  whatever its type.
+
+  ## Example
+
+      iex> attributes = %{"content" => "Hello, world!", "level" => 2}
+      iex>
+      iex> declarations = %{"content" => %Attribute{type: :string}}
+      iex>
+      iex> take_declared(attributes, declarations)
+      %{"content" => "Hello, world!"}
+
+  """
+  @doc since: "0.8.0"
+  @spec take_declared(attributes(), declarations()) :: attributes()
+  def take_declared(attributes, declarations)
+      when is_map(attributes) and is_map(declarations) do
+    keys = Map.keys(declarations)
+
+    Map.take(attributes, keys)
+  end
+
   @spec unrepresentable?({term(), term()}) :: boolean()
   defp unrepresentable?({key, value}) do
     not is_binary(key) or not representable?(value)
