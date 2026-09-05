@@ -3,9 +3,10 @@ defmodule Masonree.Type do
   Defines the lattice an attribute’s type is drawn from.
 
   A member of the lattice is a module, and it answers for itself: whether a
-  value is admissible under it, and whether a declaration of it is well formed
-  at all. Some members are declared with a payload that shapes what they admit
-  and some with nothing at all; a question is put the same way to both.
+  value is admissible under it, whether a declaration of it is well formed at
+  all, and what repair it makes of a value it refused. Some members are declared
+  with a payload that shapes what they admit and some with nothing at all; a
+  question is put the same way to both.
 
   The set is closed. A member is a module in this library implementing this
   behaviour, so the members are fixed when the library compiles — no caller, no
@@ -62,6 +63,10 @@ defmodule Masonree.Type do
   @doc "Returns whether this member may be declared with `payload`."
   @doc since: "0.5.0"
   @callback declarable?(payload :: payload()) :: boolean()
+
+  @doc "Returns this member’s repair of a refused `value`, toward `default`."
+  @doc since: "0.8.0"
+  @callback heal(payload(), value(), default()) :: healing()
 
   @modules %{
     boolean: Type.Boolean,
