@@ -30,4 +30,12 @@ defmodule Masonree.Type.BooleanTest do
       refute declarable?(true)
     end
   end
+
+  describe "heal/3" do
+    import Type.Boolean, only: [heal: 3]
+
+    test "refuses, no second reading recovering the value" do
+      assert heal(nil, ~C"junk", nil) == :refused
+    end
+  end
 end
