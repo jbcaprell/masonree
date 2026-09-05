@@ -6,9 +6,51 @@ defmodule Masonree.ReconciliationTest do
 
   alias Masonree
 
+  alias Masonree.Node
   alias Masonree.Reconciliation
 
   doctest Reconciliation, import: true
+
+  describe "report_unrepresentable/1" do
+    import Reconciliation, only: [report_unrepresentable: 1]
+
+    test "carries the offending key exactly as found" do
+      node = %Node{
+        attributes: %{1 => "one", :level => 2},
+        id: "n_2NZ9blnBmO23",
+        type: "test/example",
+        version: 1
+      }
+
+      assert report_unrepresentable(node) == [
+               {:unrepresentable_attribute, "n_2NZ9blnBmO23", 1},
+               {:unrepresentable_attribute, "n_2NZ9blnBmO23", :level}
+             ]
+    end
+
+    test "judges the value beneath a well-formed key" do
+      node = %Node{
+        attributes: %{"content" => "null\0here"},
+        id: "n_2NZ9blnBmO23",
+        type: "test/example",
+        version: 1
+      }
+
+      assert report_unrepresentable(node) ==
+               [{:unrepresentable_attribute, "n_2NZ9blnBmO23", "content"}]
+    end
+
+    test "reports nothing where every entry is representable" do
+      node = %Node{
+        attributes: %{"content" => "Hello, world!", "level" => 2},
+        id: "n_2NZ9blnBmO23",
+        type: "test/example",
+        version: 1
+      }
+
+      assert report_unrepresentable(node) == []
+    end
+  end
 
   describe "representable?/1" do
     import Reconciliation, only: [representable?: 1]

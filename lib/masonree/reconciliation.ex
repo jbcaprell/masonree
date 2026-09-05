@@ -22,11 +22,62 @@ defmodule Masonree.Reconciliation do
 
   alias Masonree
 
+  alias Masonree.Node
   alias Masonree.Type
+
+  @typedoc "Represents the node a repair is about."
+  @typedoc since: "0.8.0"
+  @type block_node() :: Node.t()
+
+  @typedoc "Represents the id of the node a repair names."
+  @typedoc since: "0.8.0"
+  @type id() :: Node.id()
+
+  @typedoc "Represents one repair that lost something, or could not run."
+  @typedoc since: "0.8.0"
+  @type problem() :: {:unrepresentable_attribute, id(), term()}
+
+  @typedoc "Represents everything reported, in document order."
+  @typedoc since: "0.8.0"
+  @type problems() :: [problem()]
 
   @typedoc "Represents anything a node’s attribute map can hold, key or value."
   @typedoc since: "0.8.0"
   @type value() :: Type.value()
+
+  @doc """
+  Returns a rejection for each attribute of `node` that would not store exactly.
+
+  The offending key rides in the report exactly as found — an atom key arrives
+  as an atom, an integer as an integer — because a restrung key in the report
+  would be the very divergence the class exists to catch. The entry is judged
+  whole: a key that would restring, or a value anywhere beneath it that would
+  restring or refuse, is one rejection naming the key.
+
+  What to do about one is a caller’s question; nothing here changes the node.
+  The keys report in the order the node’s attribute map iterates, which above 32
+  keys is not the order they were written in.
+
+  ## Example
+
+      iex> node = %Node{
+      ...>   attributes: %{"level" => :two},
+      ...>   id: "n_iaOZzKXBIQ8w",
+      ...>   type: "test/example",
+      ...>   version: 1
+      ...> }
+      iex>
+      iex> report_unrepresentable(node)
+      [{:unrepresentable_attribute, "n_iaOZzKXBIQ8w", "level"}]
+
+  """
+  @doc since: "0.8.0"
+  @spec report_unrepresentable(block_node()) :: problems()
+  def report_unrepresentable(node) when is_struct(node, Node) do
+    for entry = {key, _value} <- node.attributes, unrepresentable?(entry) do
+      {:unrepresentable_attribute, node.id, key}
+    end
+  end
 
   @doc """
   Returns whether the database can hold `value` exactly as it stands.
@@ -74,4 +125,9 @@ defmodule Masonree.Reconciliation do
   end
 
   def representable?(_value), do: false
+
+  @spec unrepresentable?({term(), term()}) :: boolean()
+  defp unrepresentable?({key, value}) do
+    not is_binary(key) or not representable?(value)
+  end
 end
