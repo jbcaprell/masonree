@@ -13,6 +13,7 @@
     Masonree.Manifest.Template,
     Masonree.Node,
     Masonree.Projection,
+    Masonree.Reconciliation,
     Masonree.Type,
     Masonree.Type.Boolean,
     Masonree.Type.Enum,
