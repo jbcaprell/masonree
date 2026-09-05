@@ -42,4 +42,12 @@ defmodule Masonree.Type.EnumTest do
       refute declarable?("dark")
     end
   end
+
+  describe "heal/3" do
+    import Type.Enum, only: [heal: 3]
+
+    test "falls back to the declared default, whatever the value" do
+      assert heal(["dark", "light"], "vermilion", "dark") == {:coerced, "dark"}
+    end
+  end
 end
