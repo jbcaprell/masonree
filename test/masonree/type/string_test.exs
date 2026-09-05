@@ -31,4 +31,12 @@ defmodule Masonree.Type.StringTest do
       refute declarable?("")
     end
   end
+
+  describe "heal/3" do
+    import Type.String, only: [heal: 3]
+
+    test "refuses, no second reading recovering the value" do
+      assert heal(nil, ~C"junk", nil) == :refused
+    end
+  end
 end
