@@ -6,6 +6,7 @@ defmodule Masonree.ReconciliationTest do
 
   alias Masonree
 
+  alias Masonree.Document
   alias Masonree.Manifest
   alias Masonree.Node
   alias Masonree.Reconciliation
@@ -41,6 +42,198 @@ defmodule Masonree.ReconciliationTest do
       declarations = %{"tag" => %Attribute{role: :chrome, type: :string}}
 
       assert fill_defaults(%{}, declarations) == %{}
+    end
+  end
+
+  describe "normalize/2" do
+    import Reconciliation, only: [normalize: 2]
+
+    test "drops what no declaration explains, and reports each" do
+      document = %Document{
+        root: [
+          %Node{
+            attributes: %{"content" => "Hello, world!", "level" => 2},
+            id: "n_L8oWETe9GxWK",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{name: "test/example", version: 1}
+      }
+
+      {healed, problems} = normalize(document, manifests)
+      [node] = healed.root
+
+      assert node.attributes == %{}
+
+      assert problems == [
+               {:dropped_attribute, "n_L8oWETe9GxWK", "content"},
+               {:dropped_attribute, "n_L8oWETe9GxWK", "level"}
+             ]
+    end
+
+    test "heals at depth, the interior answering as the root does" do
+      document = %Document{
+        root: [
+          %Node{
+            children: [
+              %Node{
+                children: [
+                  %Node{
+                    attributes: %{"content" => "Hello, world!"},
+                    id: "n_uArvIJUM2y-J",
+                    type: "test/example",
+                    version: 1
+                  }
+                ],
+                id: "n_JVLIhk9rl24m",
+                type: "test/example",
+                version: 1
+              },
+              %Node{id: "n_0gwrPRBEXfnK", type: "test/example", version: 1}
+            ],
+            id: "n_9nUkjK0eiKr9",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{name: "test/example", version: 1}
+      }
+
+      {healed, problems} = normalize(document, manifests)
+      [root] = healed.root
+      [child, _sibling] = root.children
+      [grandchild] = child.children
+
+      assert grandchild.attributes == %{}
+      assert problems == [{:dropped_attribute, "n_uArvIJUM2y-J", "content"}]
+    end
+
+    test "is idempotent, a healed document healing to itself" do
+      document = %Document{
+        root: [
+          %Node{
+            attributes: %{"content" => "Hello, world!", "tag" => "h9"},
+            id: "n_C2vNv-fBoV-A",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{
+          attributes: %{
+            "tag" => %Attribute{default: "h2", type: {:enum, ["h2", "h3"]}}
+          },
+          name: "test/example",
+          version: 1
+        }
+      }
+
+      {healed, [_dropped, _coerced]} = normalize(document, manifests)
+
+      assert normalize(healed, manifests) == {healed, []}
+    end
+
+    test "leaves a refused value standing, unreported" do
+      document = %Document{
+        root: [
+          %Node{
+            attributes: %{"flag" => "true"},
+            id: "n_o5eqxcaCZzUY",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{
+          attributes: %{"flag" => %Attribute{default: false, type: :boolean}},
+          name: "test/example",
+          version: 1
+        }
+      }
+
+      {healed, problems} = normalize(document, manifests)
+      [node] = healed.root
+
+      assert node.attributes == %{"flag" => "true"}
+      assert problems == []
+    end
+
+    test "preserves an unknown node exactly as it stands" do
+      node = %Node{
+        attributes: %{"content" => "Hello, world!", :odd => 2},
+        id: "n_Wl4HxYYoVvA5",
+        type: "test/rogue",
+        version: 1
+      }
+
+      {healed, problems} = normalize(%Document{root: [node]}, %{})
+
+      assert healed.root == [node]
+      assert problems == [{:unrepresentable_attribute, "n_Wl4HxYYoVvA5", :odd}]
+    end
+
+    test "repairs a refused value toward the default, and reports it" do
+      document = %Document{
+        root: [
+          %Node{
+            attributes: %{"tag" => "h9"},
+            id: "n_wV-1z2eOe93x",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{
+          attributes: %{
+            "tag" => %Attribute{default: "h2", type: {:enum, ["h2", "h3"]}}
+          },
+          name: "test/example",
+          version: 1
+        }
+      }
+
+      {healed, problems} = normalize(document, manifests)
+      [node] = healed.root
+
+      assert node.attributes == %{"tag" => "h2"}
+      assert problems == [{:coerced_attribute, "n_wV-1z2eOe93x", "tag"}]
+    end
+
+    test "sorts above the flat map's 32-key boundary" do
+      attribute = fn index -> {"key-#{index}", index} end
+
+      document = %Document{
+        root: [
+          %Node{
+            attributes: Map.new(1..40, attribute),
+            id: "n_Qr6b9HsQBITi",
+            type: "test/example",
+            version: 1
+          }
+        ]
+      }
+
+      manifests = %{
+        "test/example" => %Manifest{name: "test/example", version: 1}
+      }
+
+      {_healed, problems} = normalize(document, manifests)
+
+      assert length(problems) == 40
+      assert problems == Enum.sort(problems)
     end
   end
 
