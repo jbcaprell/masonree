@@ -26,6 +26,8 @@ defmodule Masonree.Reconciliation do
   alias Masonree.Node
   alias Masonree.Type
 
+  alias Manifest.Attribute
+
   @typedoc "Represents the values a node holds, under repair."
   @typedoc since: "0.8.0"
   @type attributes() :: Node.attributes()
@@ -50,6 +52,10 @@ defmodule Masonree.Reconciliation do
   @typedoc since: "0.8.0"
   @type key() :: Manifest.key()
 
+  @typedoc "Represents how a member repaired a value it refused."
+  @typedoc since: "0.8.0"
+  @type mode() :: :coerced | :sanitized
+
   @typedoc "Represents one repair that lost something, or could not run."
   @typedoc since: "0.8.0"
   @type problem() ::
@@ -59,6 +65,10 @@ defmodule Masonree.Reconciliation do
   @typedoc "Represents everything reported, in document order."
   @typedoc since: "0.8.0"
   @type problems() :: [problem()]
+
+  @typedoc "Represents the repairs owed: each a mode, a key and a healed value."
+  @typedoc since: "0.8.0"
+  @type repairs() :: [{mode(), key(), value()}]
 
   @typedoc "Represents anything a node’s attribute map can hold, key or value."
   @typedoc since: "0.8.0"
@@ -260,6 +270,42 @@ defmodule Masonree.Reconciliation do
     keys = Map.keys(declarations)
 
     Map.take(attributes, keys)
+  end
+
+  @doc """
+  Returns every repair `attributes` owes against `declarations`.
+
+  A repair is owed exactly where a held value is one its declared type refuses
+  and the member repairs rather than refuses: the member answers through
+  `Masonree.Type.heal/3`, and a `:refused` answer matches no clause of the
+  comprehension’s generator, so it is filtered by construction rather than
+  tested for — what this module does with a value it cannot repair is nothing,
+  and nothing is what an unmatched generator produces.
+
+  A held `nil` owes nothing: the lattice admits it everywhere, so the question
+  of repairing it never arises. An admitted value owes nothing, whoever held it.
+
+  ## Example
+
+      iex> declarations = %{
+      ...>   "tag" => %Attribute{default: "h2", type: {:enum, ["h2", "h3"]}}
+      ...> }
+      iex>
+      iex> take_repairs(%{"tag" => "h9"}, declarations)
+      [{:coerced, "tag", "h2"}]
+
+  """
+  @doc since: "0.8.0"
+  @spec take_repairs(attributes(), declarations()) :: repairs()
+  def take_repairs(attributes, delarations)
+      when is_map(attributes) and is_map(delarations) do
+    for {key, %Attribute{default: default, type: type}} <- delarations,
+        Map.has_key?(attributes, key),
+        value = Map.get(attributes, key),
+        not Type.admits?(type, value),
+        {mode, healed} <- [Type.heal(type, value, default)] do
+      {mode, key, healed}
+    end
   end
 
   @spec unrepresentable?({term(), term()}) :: boolean()

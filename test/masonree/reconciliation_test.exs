@@ -202,4 +202,41 @@ defmodule Masonree.ReconciliationTest do
                %{"content" => "Hello, world!"}
     end
   end
+
+  describe "take_repairs/2" do
+    import Reconciliation, only: [take_repairs: 2]
+
+    test "leaves a held nil alone, the lattice admitting it" do
+      declarations = %{
+        "tag" => %Attribute{default: "h2", type: {:enum, ["h2", "h3"]}}
+      }
+
+      assert take_repairs(%{"tag" => nil}, declarations) == []
+    end
+
+    test "leaves a refused value out, filtered by construction" do
+      declarations = %{
+        "flag" => %Attribute{default: false, type: :boolean}
+      }
+
+      assert take_repairs(%{"flag" => "true"}, declarations) == []
+    end
+
+    test "leaves an admitted value alone, whoever held it" do
+      declarations = %{
+        "tag" => %Attribute{default: "h2", type: {:enum, ["h2", "h3"]}}
+      }
+
+      assert take_repairs(%{"tag" => "h3"}, declarations) == []
+    end
+
+    test "owes the member's coercion where the type refuses the value" do
+      declarations = %{
+        "tag" => %Attribute{default: "h2", type: {:enum, ["h2", "h3"]}}
+      }
+
+      assert take_repairs(%{"tag" => "h9"}, declarations) ==
+               [{:coerced, "tag", "h2"}]
+    end
+  end
 end
