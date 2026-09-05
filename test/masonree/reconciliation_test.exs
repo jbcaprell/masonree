@@ -11,6 +11,22 @@ defmodule Masonree.ReconciliationTest do
 
   doctest Reconciliation, import: true
 
+  describe "put_default/3" do
+    import Reconciliation, only: [put_default: 3]
+
+    test "leaves a nil default unwritten, absence being the declaration" do
+      assert put_default(%{}, "content", nil) == %{}
+    end
+
+    test "never overwrites a value already held" do
+      assert put_default(%{"tag" => "h3"}, "tag", "h2") == %{"tag" => "h3"}
+    end
+
+    test "writes the default where the key is absent" do
+      assert put_default(%{}, "tag", "h2") == %{"tag" => "h2"}
+    end
+  end
+
   describe "report_unrepresentable/1" do
     import Reconciliation, only: [report_unrepresentable: 1]
 

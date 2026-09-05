@@ -22,16 +22,29 @@ defmodule Masonree.Reconciliation do
 
   alias Masonree
 
+  alias Masonree.Manifest
   alias Masonree.Node
   alias Masonree.Type
+
+  @typedoc "Represents the values a node holds, under repair."
+  @typedoc since: "0.8.0"
+  @type attributes() :: Node.attributes()
 
   @typedoc "Represents the node a repair is about."
   @typedoc since: "0.8.0"
   @type block_node() :: Node.t()
 
+  @typedoc "Represents the default a repair writes for a declared silence."
+  @typedoc since: "0.8.0"
+  @type default() :: Type.default()
+
   @typedoc "Represents the id of the node a repair names."
   @typedoc since: "0.8.0"
   @type id() :: Node.id()
+
+  @typedoc "Represents an attribute key a repair names."
+  @typedoc since: "0.8.0"
+  @type key() :: Manifest.key()
 
   @typedoc "Represents one repair that lost something, or could not run."
   @typedoc since: "0.8.0"
@@ -44,6 +57,32 @@ defmodule Masonree.Reconciliation do
   @typedoc "Represents anything a node’s attribute map can hold, key or value."
   @typedoc since: "0.8.0"
   @type value() :: Type.value()
+
+  @doc """
+  Returns `attributes` with `default` written at `key`, where both halves agree.
+
+  A `nil` default is no default at all and is never written: absence is what the
+  manifest declared, and writing `nil` would turn *never decided* into *decided
+  nil* for every reader that asks. A value already held is never overwritten — a
+  default is what a node holds in the absence of a decision, and a held value is
+  a decision, whoever made it.
+
+  ## Example
+
+      iex> put_default(%{"tag" => "h3"}, "tag", "h2")
+      %{"tag" => "h3"}
+
+  """
+  @doc since: "0.8.0"
+  @spec put_default(attributes(), key(), default()) :: attributes()
+  def put_default(attributes, _key, nil) when is_map(attributes) do
+    attributes
+  end
+
+  def put_default(attributes, key, default)
+      when is_map(attributes) and is_binary(key) do
+    Map.put_new(attributes, key, default)
+  end
 
   @doc """
   Returns a rejection for each attribute of `node` that would not store exactly.
