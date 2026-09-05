@@ -55,6 +55,24 @@ defmodule Masonree.TypeTest do
     end
   end
 
+  describe "coercible?/1" do
+    import Type, only: [coercible?: 1]
+
+    test "answers false for a scalar, which has no fallback" do
+      refute coercible?(:boolean)
+      refute coercible?(:number)
+      refute coercible?(:string)
+    end
+
+    test "answers false for a type the lattice does not hold" do
+      refute coercible?(:bool)
+    end
+
+    test "answers true for an enum, whose default is its fallback" do
+      assert coercible?({:enum, ["dark", "light"]})
+    end
+  end
+
   describe "declarable?/1" do
     import Type, only: [declarable?: 1]
 

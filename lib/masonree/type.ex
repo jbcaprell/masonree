@@ -111,6 +111,27 @@ defmodule Masonree.Type do
   end
 
   @doc """
+  Returns whether `type` heals a refused value by falling back.
+
+  Derived from `heal/3` rather than declared beside it: a predicate a member
+  answers separately can contradict the function it describes, and a derived one
+  cannot. It has no production caller and is kept for the closure witness that
+  holds every member of `list_tags/0` to a legal answer — the one mechanical
+  guard against a new member arriving unhealed.
+
+  ## Example
+
+      iex> coercible?({:enum, ["dark", "light"]})
+      true
+
+  """
+  @doc since: "0.8.0"
+  @spec coercible?(t()) :: boolean()
+  def coercible?(type) do
+    match?({:coerced, _default}, heal(type, nil, nil))
+  end
+
+  @doc """
   Returns whether `type` may be declared at all.
 
   A different question from `admits?/2`, asked at a different moment: this one
