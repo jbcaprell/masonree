@@ -78,6 +78,40 @@ defmodule Masonree.TypeTest do
     end
   end
 
+  describe "heal/3" do
+    import Type, only: [heal: 3, list_tags: 0]
+
+    test "answers for every member of the lattice, legally" do
+      types = %{
+        boolean: :boolean,
+        enum: {:enum, ["dark", "light"]},
+        number: :number,
+        string: :string
+      }
+
+      for tag <- list_tags() do
+        healing = heal(Map.fetch!(types, tag), ~C"junk", nil)
+
+        assert healing == :refused or match?({:coerced, _default}, healing)
+      end
+    end
+
+    test "coerces an enum toward its declared default" do
+      assert heal({:enum, ["dark", "light"]}, "vermilion", "dark") ==
+               {:coerced, "dark"}
+    end
+
+    test "refuses for a type the lattice does not hold" do
+      assert heal(:bool, "true", false) == :refused
+    end
+
+    test "refuses where no second reading exists" do
+      assert heal(:boolean, "true", false) == :refused
+      assert heal(:number, "2", 1) == :refused
+      assert heal(:string, 2, "") == :refused
+    end
+  end
+
   describe "list_tags/0" do
     import Type, only: [list_tags: 0]
 

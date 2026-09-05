@@ -12,11 +12,14 @@ defmodule Masonree.Type do
   behaviour, so the members are fixed when the library compiles — no caller, no
   configuration and no stored value adds one.
 
-  The lattice is asked `admits?/2` with a type and a value; it resolves the type
-  to a member and asks that member `c:admits?/2`, handing it the payload the
-  type carried and the same value. It is asked `declarable?/1` with a type
-  alone, before any value exists, and resolves it the same way — a type that
-  resolves to no member is not declarable, and admits nothing.
+  The lattice is asked `admits?/2` with a type and a value; it resolves the
+  type to a member and asks that member `c:admits?/2`, handing it the payload
+  the type carried and the same value. It is asked `declarable?/1` with a
+  type alone, before any value exists, and resolves it the same way — a type
+  that resolves to no member is not declarable, and admits nothing. It is
+  asked `heal/3` with a type, a value it refused and the declared default,
+  and resolves it once more, to `c:heal/3`; a type that resolves to no
+  member refuses.
   """
   @moduledoc since: "0.3.0"
 
@@ -143,6 +146,33 @@ defmodule Masonree.Type do
     case resolve(type) do
       {module, payload} -> module.declarable?(payload)
       :error -> false
+    end
+  end
+
+  @doc """
+  Returns the repair `type` makes of a refused `value`, toward `default`.
+
+  The member answers, and the answer is one of three: `:refused` — no second
+  reading recovers the value; `{:coerced, default}` — the declared default
+  replaces it; `{:sanitized, value}` — the value is repaired into one the member
+  admits. What a caller does with the answer is the caller’s; this function
+  changes nothing.
+
+  A type the lattice does not hold refuses, exactly as `admits?/2` answers
+  `false` for it: a value under an illegible type has no member to repair it.
+
+  ## Example
+
+      iex> heal({:enum, ["dark", "light"]}, "vermilion", "dark")
+      {:coerced, "dark"}
+
+  """
+  @doc since: "0.8.0"
+  @spec heal(t(), value(), default()) :: healing()
+  def heal(type, value, default) do
+    case resolve(type) do
+      {module, payload} -> module.heal(payload, value, default)
+      :error -> :refused
     end
   end
 
